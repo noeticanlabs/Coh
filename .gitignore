@@ -1,0 +1,17 @@
+# Lean 4
+.lake/
+*.olean
+*.ilean
+*.c
+
+# System
+.DS_Store
+Thumbs.db
+[Bb]humbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
