@@ -15,7 +15,7 @@ jobs:
       - name: Setup Lean
         uses: leanprover/lean-action@v1
         with:
-          working-directory: Coh
+          lake-package-directory: Coh
 
       - name: Build project
         run: |
