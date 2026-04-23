@@ -1,11 +1,11 @@
+import Mathlib.Data.Real.Basic
+
 /-!
 ## Coh V2 Primitive Structures
 
 This module defines the core structures for the Coh V2 framework,
 separating hidden execution layers from observable trace layers.
 -/
-
-import Mathlib.Data.Real.Basic
 
 namespace Coh.V2
 

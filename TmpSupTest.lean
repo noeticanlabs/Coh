@@ -11,7 +11,7 @@ open Coh.V2.FiniteWord
 inductive A | x deriving DecidableEq, Fintype, Repr
 inductive B | y deriving DecidableEq, Fintype, Nonempty, Repr
 
-def cb : B → NNreal := fun _ => 5
+def cb : B → NNReal := fun _ => 5
 
 def sys := mkFiniteWordSystem (A := A) (B := B) cb
 
