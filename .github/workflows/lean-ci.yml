@@ -12,10 +12,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup elan
-      run: |
-        curl -sSfL https://github.com/leanprover/elan/releases/download/v4.30.0/elan-x86_64-unknown-linux-musl.tar.gz | tar xz -C ~/.local
-        ~/.local/bin/elan toolchain install leanprover/lean4:v4.30.0-rc2
+    - name: Setup Lean
+      uses: leanprover/lean-action@v1
 
     - name: Build project
       run: lake build
