@@ -11,7 +11,7 @@ universe u v
 A certified morphism carries an observable trace, a spend, and a defect bound,
 together with the governing inequality and domination of the analytic envelope.
 -/
-structure CertifiedMor (S : System) (A : Assumptions S) (V : X → ℝ) (x y : X) where
+structure CertifiedMor (S : System) (A : Assumptions S) {X : Type v} (V : X → ℝ) (x y : X) where
   trace : S.Obs.V
   spend : ℝ
   defect : ℝ

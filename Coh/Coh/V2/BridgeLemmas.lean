@@ -5,56 +5,6 @@ namespace Coh.V2
 
 open Coh.V1
 
-/-- Helper: cost calculated directly from a list of steps. -/
-def stepsSpend {X : Type} : List (Step X) → ℚ
-| [] => 0
-| s :: ss => s.costSpend + stepsSpend ss
-
-def stepsDefect {X : Type} : List (Step X) → ℚ
-| [] => 0
-| s :: ss => s.costDefect + stepsDefect ss
-
-theorem stepsSpend_append {X : Type} (as bs : List (Step X)) :
-    stepsSpend (as ++ bs) = stepsSpend as + stepsSpend bs := by
-  induction as
-  case nil => simp [stepsSpend]
-  case cons a as ih =>
-    simp [stepsSpend, ih, add_assoc]
-
-theorem stepsDefect_append {X : Type} (as bs : List (Step X)) :
-    stepsDefect (as ++ bs) = stepsDefect as + stepsDefect bs := by
-  induction as
-  case nil => simp [stepsDefect]
-  case cons a as ih =>
-    simp [stepsDefect, ih, add_assoc]
-
-/-- Link between traceSpend and stepsSpend. -/
-theorem traceSpend_eq_stepsSpend {X : Type} (t : Trace X) :
-    traceSpend t = stepsSpend t.steps := by
-  match t with
-  | ⟨src, dst, steps, chain⟩ =>
-    induction steps generalizing src dst
-    case nil => simp [traceSpend, stepsSpend]
-    case cons s ss ih =>
-      simp [traceSpend, stepsSpend]
-      apply ih s.dst dst (by
-        simp [is_chain] at chain
-        exact chain.2
-      )
-
-theorem traceDefect_eq_stepsDefect {X : Type} (t : Trace X) :
-    traceDefect t = stepsDefect t.steps := by
-  match t with
-  | ⟨src, dst, steps, chain⟩ =>
-    induction steps generalizing src dst
-    case nil => simp [traceDefect, stepsDefect]
-    case cons s ss ih =>
-      simp [traceDefect, stepsDefect]
-      apply ih s.dst dst (by
-        simp [is_chain] at chain
-        exact chain.2
-      )
-
 /-- Zero cost for identity traces. -/
 theorem traceSpend_empty {X : Type} (x : X) : 
     traceSpend (emptyTrace x) = 0 := by

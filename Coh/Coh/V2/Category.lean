@@ -16,15 +16,17 @@ def HomLE (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ)
     (f g : Coh.V2.CertifiedMor S A V x y) : Prop :=
   f.trace = g.trace ∧ f.spend = g.spend ∧ f.defect ≤ g.defect
 
-instance instHomPreorder (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ) {x y : X} :
-    Preorder (Coh.V2.CertifiedMor S A V x y) where
+instance instHomPartialOrder (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ) {x y : X} :
+    PartialOrder (Coh.V2.CertifiedMor S A V x y) where
   le f g := HomLE S A X V f g
-  le_refl f := by
-    exact ⟨rfl, rfl, le_rfl⟩
-  le_trans f g h hfg hgh := by
-    rcases hfg with ⟨htr₁, hsp₁, hd₁⟩
-    rcases hgh with ⟨htr₂, hsp₂, hd₂⟩
-    exact ⟨htr₁.trans htr₂, hsp₁.trans hsp₂, le_trans hd₁ hd₂⟩
+  le_refl f := ⟨rfl, rfl, le_rfl⟩
+  le_trans f g h hfg hgh := 
+    ⟨hfg.1.trans hgh.1, hfg.2.1.trans hgh.2.1, hfg.2.2.trans hgh.2.2⟩
+  le_antisymm f g hfg hgf := by
+    apply CertifiedMor.ext
+    · exact hfg.1
+    · exact hfg.2.1
+    · exact le_antisymm hfg.2.2 hgf.2.2
 
 /-- Associativity of certified composition. -/
 theorem assoc_certified
@@ -33,66 +35,46 @@ theorem assoc_certified
     (f : Coh.V2.CertifiedMor S A V w x)
     (g : Coh.V2.CertifiedMor S A V x y)
     (h : Coh.V2.CertifiedMor S A V y z)
-    {R₁₂ R₂₃ R₁₂₃ : S.Obs.V}
-    (h₁₂ : S.Obs.comp g.trace f.trace = some R₁₂)
-    (h₂₃ : S.Obs.comp h.trace g.trace = some R₂₃)
-    (h₁₂₃a : S.Obs.comp h.trace R₁₂ = some R₁₂₃)
-    (h₁₂₃b : S.Obs.comp R₂₃ f.trace = some R₁₂₃) :
-    Coh.V2.compose (S := S) (A := A) (X := X) V
-      (Coh.V2.compose (S := S) (A := A) (X := X) V f g h₁₂) h h₁₂₃a =
-      Coh.V2.compose (S := S) (A := A) (X := X) V
-        f (Coh.V2.compose (S := S) (A := A) (X := X) V g h h₂₃) h₁₂₃b := by
+    {R₂₁ R₃₂ R₃₂₁a R₃₂₁b : S.Obs.V}
+    (h₁₂ : S.Obs.comp g.trace f.trace = some R₂₁)
+    (h₂₃ : S.Obs.comp h.trace g.trace = some R₃₂)
+    (h₁₂₃a : S.Obs.comp h.trace R₂₁ = some R₃₂₁a)
+    (h₁₂₃b : S.Obs.comp R₃₂ f.trace = some R₃₂₁b) :
+    Coh.V2.compose V (Coh.V2.compose V f g h₁₂) h h₁₂₃a =
+    Coh.V2.compose V f (Coh.V2.compose V g h h₂₃) h₁₂₃b := by
   ext
-  · rfl
-  · simp [Coh.V2.compose, add_assoc, add_comm, add_left_comm]
-  · simp [Coh.V2.compose, add_assoc, add_comm, add_left_comm]
+  · have h_assoc := Assumptions.obs_assoc A h₁₂ h₂₃ h₁₂₃a
+    rw [h_assoc] at h₁₂₃b
+    injection h₁₂₃b
+  · simp [Coh.V2.compose, add_assoc]
+  · simp [Coh.V2.compose, add_assoc]
 
 /-- Identity laws for certified composition. -/
-theorem identity_laws
+theorem id_right_certified
     (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ)
-    {x y : X}
-    (f : Coh.V2.CertifiedMor S A V x y) :
-    Coh.V2.compose (S := S) (A := A) (X := X) V
-      (Coh.V2.idMor (S := S) (A := A) (X := X) V x) f
-      (Assumptions.obs_id_right A f.trace) = f ∧
-    Coh.V2.compose (S := S) (A := A) (X := X) V
-      f (Coh.V2.idMor (S := S) (A := A) (X := X) V y)
-      (Assumptions.obs_id_left A f.trace) = f := by
-  constructor
-  · ext
-    · simp [Coh.V2.compose, Assumptions.obs_id_right A]
-    · simp [Coh.V2.compose, Coh.V2.idMor]
-    · simp [Coh.V2.compose, Coh.V2.idMor]
-  · ext
-    · simp [Coh.V2.compose, Assumptions.obs_id_left A]
-    · simp [Coh.V2.compose, Coh.V2.idMor]
-    · simp [Coh.V2.compose, Coh.V2.idMor]
+    {x y : X} (f : Coh.V2.CertifiedMor S A V x y)
+    {R : S.Obs.V} (hcomp : S.Obs.comp f.trace S.Obs.id = some R) :
+    Coh.V2.compose V (Coh.V2.idMor V x) f hcomp = f := by
+  ext
+  · have h_id := Assumptions.obs_id_right A f.trace
+    rw [h_id] at hcomp
+    injection hcomp
+  · simp [Coh.V2.compose, Coh.V2.idMor]
+  · simp [Coh.V2.compose, Coh.V2.idMor]
 
-/-- Monotonicity of certified composition. -/
-theorem compose_monotone
+theorem id_left_certified
     (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ)
-    {x y z : X}
-    {f f' : Coh.V2.CertifiedMor S A V x y}
-    {g g' : Coh.V2.CertifiedMor S A V y z}
-    (hf : HomLE S A X V f f')
-    (hg : HomLE S A X V g g')
-    {R₂₁ : S.Obs.V}
-    (hcomp : S.Obs.comp g.trace f.trace = some R₂₁) :
-    let hcomp' : S.Obs.comp g'.trace f'.trace = some R₂₁ := by
-      rcases hf with ⟨hftr, _, _⟩
-      rcases hg with ⟨hgtr, _, _⟩
-      simpa [hftr, hgtr] using hcomp
-    HomLE S A X V
-      (Coh.V2.compose (S := S) (A := A) (X := X) V f g hcomp)
-      (Coh.V2.compose (S := S) (A := A) (X := X) V f' g' hcomp') := by
-  rcases hf with ⟨hftr, hfsp, hfd⟩
-  rcases hg with ⟨hgtr, hgsp, hgd⟩
-  dsimp only []
-  refine ⟨rfl, ?_, ?_⟩
-  · simpa [Coh.V2.compose, hfsp, hgsp]
-  · simpa [Coh.V2.compose] using add_le_add hfd hgd
+    {x y : X} (f : Coh.V2.CertifiedMor S A V x y)
+    {R : S.Obs.V} (hcomp : S.Obs.comp S.Obs.id f.trace = some R) :
+    Coh.V2.compose V f (Coh.V2.idMor V y) hcomp = f := by
+  ext
+  · have h_id := Assumptions.obs_id_left A f.trace
+    rw [h_id] at hcomp
+    injection hcomp
+  · simp [Coh.V2.compose, Coh.V2.idMor]
+  · simp [Coh.V2.compose, Coh.V2.idMor]
 
-/-- A small concrete structure for a locally preordered category. -/
+/-- A category where each hom-set is a local preorder. -/
 structure LocalPreorderCategory (Obj : Type u) where
   Hom : Obj → Obj → Type w
   id : ∀ x, Hom x x
@@ -102,6 +84,12 @@ structure LocalPreorderCategory (Obj : Type u) where
       comp (comp f g) h = comp f (comp g h)
   id_right : ∀ {x y} (f : Hom x y), comp (id x) f = f
   id_left : ∀ {x y} (f : Hom x y), comp f (id y) = f
+  /-- Local preorder on each hom-set. -/
+  homPreorder : ∀ {x y : Obj}, PartialOrder (Hom x y)
+  /-- Composition is monotone in both arguments. -/
+  comp_monotone :
+    ∀ {x y z} {f₁ f₂ : Hom x y} {g₁ g₂ : Hom y z},
+      (f₁ ≤ f₂) → (g₁ ≤ g₂) → comp f₁ g₁ ≤ comp f₂ g₂
 
 /-- The certified category packaged as an explicit object. -/
 def certifiedCategory
@@ -126,26 +114,12 @@ def certifiedCategory
       compObj (idObj x) f = f := by
     intro x y f
     let p := chooseComp (idObj x) f
-    ext
-    · have hp : S.Obs.comp f.trace S.Obs.id = some p.1 := by
-        simpa [idObj] using p.2
-      have hid : S.Obs.comp f.trace S.Obs.id = some f.trace :=
-        Assumptions.obs_id_right A f.trace
-      exact Option.some.inj (hp.symm.trans hid)
-    · simp [compObj, idObj, p, Coh.V2.compose, Coh.V2.idMor]
-    · simp [compObj, idObj, p, Coh.V2.compose, Coh.V2.idMor]
+    apply id_right_certified S A X V f p.2
   have id_left : ∀ {x y : X} (f : Coh.V2.CertifiedMor S A V x y),
       compObj f (idObj y) = f := by
     intro x y f
     let p := chooseComp f (idObj y)
-    ext
-    · have hp : S.Obs.comp S.Obs.id f.trace = some p.1 := by
-        simpa [idObj] using p.2
-      have hid : S.Obs.comp S.Obs.id f.trace = some f.trace :=
-        Assumptions.obs_id_left A f.trace
-      exact Option.some.inj (hp.symm.trans hid)
-    · simp [compObj, idObj, p, Coh.V2.compose, Coh.V2.idMor]
-    · simp [compObj, idObj, p, Coh.V2.compose, Coh.V2.idMor]
+    apply id_left_certified S A X V f p.2
   have comp_assoc : ∀ {w x y z : X}
       (f : Coh.V2.CertifiedMor S A V w x)
       (g : Coh.V2.CertifiedMor S A V x y)
@@ -156,22 +130,32 @@ def certifiedCategory
     let p₂₃ := chooseComp g h
     let p₁₂₃a := chooseComp (compObj f g) h
     let p₁₂₃b := chooseComp f (compObj g h)
-    ext
-    · have h₁₂₃a' : S.Obs.comp h.trace p₁₂.1 = some p₁₂₃a.1 := by
-        simpa [compObj, p₁₂] using p₁₂₃a.2
-      have hleft : S.Obs.comp p₂₃.1 f.trace = some p₁₂₃a.1 :=
-        Assumptions.obs_assoc A p₁₂.2 p₂₃.2 h₁₂₃a'
-      have hright : S.Obs.comp p₂₃.1 f.trace = some p₁₂₃b.1 := by
-        simpa [compObj, p₂₃] using p₁₂₃b.2
-      exact Option.some.inj (hleft.symm.trans hright)
-    · simp [compObj, Coh.V2.compose, add_assoc, add_comm, add_left_comm]
-    · simp [compObj, Coh.V2.compose, add_assoc, add_comm, add_left_comm]
+    apply assoc_certified S A X V f g h p₁₂.2 p₂₃.2 p₁₂₃a.2 p₁₂₃b.2
+  have comp_monotone : ∀ {x y z : X} {f₁ f₂ : Coh.V2.CertifiedMor S A V x y} {g₁ g₂ : Coh.V2.CertifiedMor S A V y z},
+      (f₁ ≤ f₂) → (g₁ ≤ g₂) → compObj f₁ g₁ ≤ compObj f₂ g₂ := by
+    intro x y z f1 f2 g1 g2 hf hg
+    rcases hf with ⟨htf, hsf, hdf⟩
+    rcases hg with ⟨htg, hsg, hdg⟩
+    let p1 := chooseComp f1 g1
+    let p2 := chooseComp f2 g2
+    constructor
+    · simp [compObj, compose]
+      have htr1 := p1.2
+      have htr2 := p2.2
+      rw [htf, htg] at htr1
+      exact Option.some.inj (htr1.symm.trans htr2)
+    · constructor
+      · simp [compObj, compose, hsf, hsg]
+      · simp [compObj, compose]
+        exact add_le_add hdf hdg
   { Hom := fun x y => Coh.V2.CertifiedMor S A V x y,
     id := idObj,
     comp := compObj,
     comp_assoc := comp_assoc,
     id_right := id_right,
-    id_left := id_left }
+    id_left := id_left,
+    homPreorder := fun {x y} => instHomPartialOrder S A X V,
+    comp_monotone := comp_monotone }
 
 /-- The main theorem: certified morphisms determine a locally preordered category. -/
 theorem certified_category

@@ -60,6 +60,29 @@ theorem Trace.ext {X : Type} (t1 t2 : Trace X)
   subst h_src h_dst h_steps
   congr
 
+/-- Helper: cost calculated directly from a list of steps. -/
+def stepsSpend {X : Type} : List (Step X) → ℚ
+| [] => 0
+| s :: ss => s.costSpend + stepsSpend ss
+
+def stepsDefect {X : Type} : List (Step X) → ℚ
+| [] => 0
+| s :: ss => s.costDefect + stepsDefect ss
+
+theorem stepsSpend_append {X : Type} (as bs : List (Step X)) :
+    stepsSpend (as ++ bs) = stepsSpend as + stepsSpend bs := by
+  induction as
+  case nil => simp [stepsSpend]
+  case cons a as ih =>
+    simp [stepsSpend, ih, add_assoc]
+
+theorem stepsDefect_append {X : Type} (as bs : List (Step X)) :
+    stepsDefect (as ++ bs) = stepsDefect as + stepsDefect bs := by
+  induction as
+  case nil => simp [stepsDefect]
+  case cons a as ih =>
+    simp [stepsDefect, ih, add_assoc]
+
 def traceSpend {X : Type} : Trace X → ℚ
 | ⟨_, _, [], _⟩ => 0
 | ⟨_, dst, s :: ss, chain⟩ => 
@@ -69,6 +92,20 @@ def traceSpend {X : Type} : Trace X → ℚ
     ⟩
 termination_by t => t.steps.length
 
+/-- Link between traceSpend and stepsSpend. -/
+theorem traceSpend_eq_stepsSpend {X : Type} (t : Trace X) :
+    traceSpend t = stepsSpend t.steps := by
+  match t with
+  | ⟨src, dst, steps, chain⟩ =>
+    induction steps generalizing src dst
+    case nil => simp [traceSpend, stepsSpend]
+    case cons s ss ih =>
+      simp [traceSpend, stepsSpend]
+      apply ih s.dst dst (by
+        simp [is_chain] at chain
+        exact chain.2
+      )
+
 def traceDefect {X : Type} : Trace X → ℚ
 | ⟨_, _, [], _⟩ => 0
 | ⟨_, dst, s :: ss, chain⟩ => 
@@ -77,6 +114,19 @@ def traceDefect {X : Type} : Trace X → ℚ
       exact chain.2
     ⟩
 termination_by t => t.steps.length
+
+theorem traceDefect_eq_stepsDefect {X : Type} (t : Trace X) :
+    traceDefect t = stepsDefect t.steps := by
+  match t with
+  | ⟨src, dst, steps, chain⟩ =>
+    induction steps generalizing src dst
+    case nil => simp [traceDefect, stepsDefect]
+    case cons s ss ih =>
+      simp [traceDefect, stepsDefect]
+      apply ih s.dst dst (by
+        simp [is_chain] at chain
+        exact chain.2
+      )
 
 def RVAccept (X : Type) (t : Trace X) : Prop := 
   ∀ s ∈ t.steps, s.typed
