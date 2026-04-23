@@ -22,8 +22,6 @@ theorem trace_spend_eq_hidden_cost {X : Type} [DecidableEq X] (t : Trace X) (c_B
   induction t.steps
   case nil => simp [stepsSpend, hiddenCost]
   case cons s ss ih =>
-    simp [stepsSpend, hiddenCost]
-    -- Cost mapping logic
-    sorry
+    simp [stepsSpend, hiddenCost, ih]
 
 end Coh.V2.CostBridge

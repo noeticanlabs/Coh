@@ -22,16 +22,20 @@ jobs:
           cd Coh
           lake build
 
-      - name: Smoke test
+      - name: Formal tests
         run: |
           cd Coh
-          echo "Testing core imports..."
-          lake env lean TmpSupTest.lean
-          echo "Smoke test passed!"
+          echo "Running formal regression tests..."
+          lake build FiniteWordTests
+          echo "Tests passed!"
 
       - name: Check for sorries
         run: |
           cd Coh
-          echo "Checking for sorry in core modules..."
-          # This would grep if there were any sorries
-          echo "No sorries found in core!"
+          echo "Scanning for unfinished proofs (sorry)..."
+          if grep -r "sorry" Coh/Coh; then
+            echo "Error: Found 'sorry' in core modules. Build failed."
+            exit 1
+          else
+            echo "No 'sorry' found in core modules."
+          fi

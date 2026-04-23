@@ -219,27 +219,39 @@ theorem concat_id_left {X : Type} [DecidableEq X] (t : Trace X) :
 theorem concat_empty_left {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
     (h_id : t₁₂ = emptyTrace t₁.src) (h : concat t₁ t₂ = some t₁₂) :
     t₁.steps = [] ∧ t₂.steps = [] := by
-  unfold concat at h; split at h; injection h with h_eq
-  rw [h_id] at h_eq
-  simp [emptyTrace] at h_eq
-  exact h_eq.2
+  unfold concat at h; split at h
+  case isFalse => contradiction
+  case isTrue h_dst =>
+    injection h with h_eq
+    rw [h_id] at h_eq
+    simp [emptyTrace] at h_eq
+    exact h_eq.2
 
 theorem concat_empty_right {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
     (h_id : t₁₂ = emptyTrace t₁.src) (h : concat t₁ t₂ = some t₁₂) :
     t₂.steps = [] := by
-  unfold concat at h; split at h; injection h with h_eq
-  rw [h_id] at h_eq
-  simp [emptyTrace] at h_eq
-  exact h_eq.2.2
+  unfold concat at h; split at h
+  case isFalse => contradiction
+  case isTrue h_dst =>
+    injection h with h_eq
+    rw [h_id] at h_eq
+    simp [emptyTrace] at h_eq
+    exact h_eq.2.2
 
 theorem concat_id_id {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
     (h1 : t₁ = emptyTrace t₁.src) (h2 : t₂ = emptyTrace t₂.src) (h : concat t₁ t₂ = some t₁₂) :
     t₁₂ = emptyTrace t₁.src := by
-  unfold concat at h; split at h; injection h with h_eq
-  subst h1 h2
-  simp [emptyTrace] at h_eq
-  rw [← h_eq]
-  apply Trace.ext <;> simp [emptyTrace]
+  unfold concat at h; split at h
+  case isFalse => contradiction
+  case isTrue h_dst =>
+    injection h with h_eq
+    apply Trace.ext
+    · rw [← h_eq, h1]; simp [emptyTrace]
+    · rw [← h_eq, h2]; simp [emptyTrace]
+      rw [h1, h2] at h_dst
+      simp [emptyTrace] at h_dst
+      exact h_dst
+    · rw [← h_eq, h1, h2]; simp [emptyTrace]
 
 theorem rv_id (X : Type) (x : X) : RVAccept X (emptyTrace x) := by
   simp [RVAccept, emptyTrace]

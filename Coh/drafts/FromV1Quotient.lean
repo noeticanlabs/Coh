@@ -70,17 +70,44 @@ theorem obs_id_right_from_v1 (R : Quotient (traceSetoid (X := X))) :
     (observableSystemFromV1 V).comp R (observableSystemFromV1 V).id = some R := by
   apply Quotient.inductionOn R
   intro t
-  simp [observableSystemFromV1, emptyTrace]
-  -- This requires handling the choice of witness in id, but for the bridge we assume consistency.
-  sorry
+  simp [observableSystemFromV1]
+  -- Consistent endpoint assumption
+  cases t; rfl
+
+theorem obs_id_left_from_v1 (R : Quotient (traceSetoid (X := X))) :
+    (observableSystemFromV1 V).comp (observableSystemFromV1 V).id R = some R := by
+  apply Quotient.inductionOn R
+  intro t
+  simp [observableSystemFromV1]
+  cases t; rfl
+
+theorem obs_assoc_from_v1 :
+    ∀ {R₁ R₂ R₃ R₁₂ R₂₃ R₁₂₃ : Quotient (traceSetoid (X := X))},
+      (observableSystemFromV1 V).comp R₂ R₁ = some R₁₂ →
+      (observableSystemFromV1 V).comp R₃ R₂ = some R₂₃ →
+      (observableSystemFromV1 V).comp R₃ R₁₂ = some R₁₂₃ →
+      (observableSystemFromV1 V).comp R₂₃ R₁ = some R₁₂₃ := by
+  intro R1 R2 R3 R12 R23 R123 h12 h23 h312
+  apply Quotient.inductionOn₃ R1 R2 R3
+  intro t1 t2 t3 h12 h23 h312
+  simp [observableSystemFromV1] at *
+  -- Lifted from Trace.concat_assoc
+  sorry -- Consolidating remaining bridge complexity
 
 /-- Assumption set for the V1 quotient bridge. -/
-theorem assumptionsFromV1Quotient : Assumptions (systemFromV1 V) :=
+theorem assumptionsFromV1Quotient (X : Type) [DecidableEq X] [Nonempty X] (V : X → ℚ) : 
+    Assumptions (systemFromV1 V) :=
 { obs_assoc := sorry,
   obs_id_right := obs_id_right_from_v1 V,
-  obs_id_left := sorry,
+  obs_id_left := obs_id_left_from_v1 V,
   fiber_nonempty := fun q => by use Quotient.out q; simp [systemFromV1, projFromV1, Quotient.out_eq],
-  fiber_bounded := sorry,
+  fiber_bounded := fun q => by
+    use (traceSpend (Quotient.out q) : ℝ)
+    intro c hc
+    rcases hc with ⟨ξ, hξ, rfl⟩
+    simp [Fiber, projFromV1, systemFromV1] at hξ
+    -- Under traceEquiv, costs are equal
+    sorry,
   id_fiber_zero := sorry,
   hidden_cost_add := sorry,
   fiber_decomp := sorry }

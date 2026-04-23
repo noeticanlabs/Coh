@@ -18,3 +18,6 @@ def my_trace : HiddenG A B := [(.x, .y), (.x, .y)]
 
 example : hiddenCost cb my_trace = 10 := rfl
 example : c_max cb = 5 := rfl
+
+def main : IO Unit := do
+  IO.println "FiniteWordTests: Hidden cost and c_max verified."

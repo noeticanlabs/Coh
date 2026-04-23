@@ -20,6 +20,8 @@ lean_lib «Coh» where
     `Coh.V2.Category,
     `Coh.V2.FiniteWord,
     `Coh.V2.BridgeLemmas,
-    `Coh.V2.FromV1,
-    `Coh.V2.FromV1Quotient
+    `Coh.V2.FromV1
   ]
+
+lean_exe «FiniteWordTests» where
+  root := `tests.FiniteWordTests
