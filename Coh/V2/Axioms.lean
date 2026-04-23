@@ -1,3 +1,11 @@
+/-!
+## Coh V2 Axiomatic Framework
+
+This module formalizes the core axioms of the Coh V2 framework.
+The `Assumptions` structure captures the requirements for a `System` to be
+well-behaved, mirroring the analytical conditions defined in the manuscript.
+-/
+
 import Coh.V2.Definitions
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 

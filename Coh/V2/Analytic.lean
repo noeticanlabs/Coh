@@ -1,6 +1,14 @@
 import Coh.V2.Axioms
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 
+/-!
+## Coh V2 Analytic Envelopes
+
+This module develops the analytic theory of the Coh V2 framework.
+It defines the defect envelope (delta) as the supremum of costs in the
+hidden fiber and proves its soundness, minimality, and subadditivity properties.
+-/
+
 noncomputable section
 
 open scoped Classical

@@ -1,6 +1,13 @@
 import Lake
 open Lake DSL
 
+/-!
+## Coh Project Configuration
+
+This file configures the Coh Lean 4 package.
+It requires mathlib4 and defines the core library targets.
+-/
+
 package «Coh» where
   -- add package configuration options here
 
@@ -10,4 +17,16 @@ require mathlib from git
 @[default_target]
 lean_lib «Coh» where
   srcDir := "."
-  roots := #[`Coh.V1.Coh, `Coh.V2.Primitive, `Coh.V2.Definitions, `Coh.V2.Axioms, `Coh.V2.Analytic, `Coh.V2.Certified, `Coh.V2.Category, `Coh.V2.FromV1]
+  roots := #[
+    `Coh.V1.Coh,
+    `Coh.V2.Primitive,
+    `Coh.V2.Definitions,
+    `Coh.V2.Axioms,
+    `Coh.V2.Analytic,
+    `Coh.V2.Certified,
+    `Coh.V2.Category,
+    `Coh.V2.FiniteWord,
+    `Coh.V2.BridgeLemmas,
+    `Coh.V2.FromV1,
+    `Coh.V2.FromV1Quotient
+  ]

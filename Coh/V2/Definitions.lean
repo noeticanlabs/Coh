@@ -1,3 +1,10 @@
+/-!
+## Coh V2 Core Definitions
+
+This module provides the analytic definitions for the Coh V2 framework,
+including fiber sets, cost sets, and the observable defect envelope (delta).
+-/
+
 import Coh.V2.Primitive
 import Mathlib.Order.ConditionallyCompleteLattice.Basic
 import Mathlib.Data.Real.Basic

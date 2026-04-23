@@ -25,7 +25,6 @@ structure Glyph where
   token       : ControlToken
   wf_surface  : Prop
   wf_token    : Prop
-deriving DecidableEq
 
 def Glyph.compiles (g : Glyph) : Prop :=
   g.wf_surface ∧ g.wf_token
@@ -38,7 +37,6 @@ structure Step (X : Type) where
   costDefect  : ℚ
   typed       : Prop
   compiles_ok : Glyph.compiles glyph
-deriving DecidableEq
 
 /-- Recursive predicate for a valid transition chain. -/
 def is_chain {X : Type} : X → X → List (Step X) → Prop
@@ -50,7 +48,6 @@ structure Trace (X : Type) where
   dst   : X
   steps : List (Step X)
   chain : is_chain src dst steps
-deriving DecidableEq
 
 @[ext, simp]
 theorem Trace.ext {X : Type} (t1 t2 : Trace X)
@@ -91,6 +88,9 @@ def traceSpend {X : Type} : Trace X → ℚ
       exact chain.2
     ⟩
 termination_by t => t.steps.length
+decreasing_by
+  simp [List.length_cons]
+  apply Nat.lt_succ_self
 
 /-- Link between traceSpend and stepsSpend. -/
 theorem traceSpend_eq_stepsSpend {X : Type} (t : Trace X) :
@@ -114,6 +114,9 @@ def traceDefect {X : Type} : Trace X → ℚ
       exact chain.2
     ⟩
 termination_by t => t.steps.length
+decreasing_by
+  simp [List.length_cons]
+  apply Nat.lt_succ_self
 
 theorem traceDefect_eq_stepsDefect {X : Type} (t : Trace X) :
     traceDefect t = stepsDefect t.steps := by
@@ -162,6 +165,17 @@ def concat {X : Type} [DecidableEq X] (t₁ t₂ : Trace X) : Option (Trace X) :
     }
   else none
 
+/-- Length of steps is additive under concatenation. -/
+theorem trace_length_concat {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
+    (h : concat t₁ t₂ = some t₁₂) :
+    t₁₂.steps.length = t₁.steps.length + t₂.steps.length := by
+  unfold concat at h
+  split at h; case isFalse => contradiction
+  case isTrue =>
+    injection h with h_eq
+    rw [← h_eq]
+    simp [List.length_append]
+
 theorem concat_assoc {X : Type} [DecidableEq X] (t₁ t₂ t₃ : Trace X) (t₁₂ t₂₃ t₁₂₃ : Trace X)
     (h12 : concat t₁ t₂ = some t₁₂)
     (h23 : concat t₂ t₃ = some t₂₃)
@@ -201,6 +215,31 @@ theorem concat_id_right {X : Type} [DecidableEq X] (t : Trace X) :
 theorem concat_id_left {X : Type} [DecidableEq X] (t : Trace X) :
     concat (emptyTrace t.src) t = some t := by
   simp [concat, emptyTrace, Trace.ext]
+
+theorem concat_empty_left {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
+    (h_id : t₁₂ = emptyTrace t₁.src) (h : concat t₁ t₂ = some t₁₂) :
+    t₁.steps = [] ∧ t₂.steps = [] := by
+  unfold concat at h; split at h; injection h with h_eq
+  rw [h_id] at h_eq
+  simp [emptyTrace] at h_eq
+  exact h_eq.2
+
+theorem concat_empty_right {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
+    (h_id : t₁₂ = emptyTrace t₁.src) (h : concat t₁ t₂ = some t₁₂) :
+    t₂.steps = [] := by
+  unfold concat at h; split at h; injection h with h_eq
+  rw [h_id] at h_eq
+  simp [emptyTrace] at h_eq
+  exact h_eq.2.2
+
+theorem concat_id_id {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
+    (h1 : t₁ = emptyTrace t₁.src) (h2 : t₂ = emptyTrace t₂.src) (h : concat t₁ t₂ = some t₁₂) :
+    t₁₂ = emptyTrace t₁.src := by
+  unfold concat at h; split at h; injection h with h_eq
+  subst h1 h2
+  simp [emptyTrace] at h_eq
+  rw [← h_eq]
+  apply Trace.ext <;> simp [emptyTrace]
 
 theorem rv_id (X : Type) (x : X) : RVAccept X (emptyTrace x) := by
   simp [RVAccept, emptyTrace]

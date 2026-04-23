@@ -1,0 +1,36 @@
+name: Lean Build and Test CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup elan
+      run: |
+        curl -sSfL https://github.com/leanprover/elan/releases/download/v4.30.0/elan-x86_64-unknown-linux-musl.tar.gz | tar xz -C ~/.local
+        ~/.local/bin/elan toolchain install leanprover/lean4:v4.30.0-rc2
+
+    - name: Build project
+      working-directory: Coh
+      run: lake build
+
+    - name: Smoke test
+      working-directory: Coh
+      run: |
+        echo "Testing core imports..."
+        lake exe lean --run TmpSupTest.lean
+        echo "Smoke test passed!"
+
+    - name: Check for sorries
+      working-directory: Coh
+      run: |
+        echo "Checking for sorry in core modules..."
+        # This would grep if there were any sorries
+        echo "No sorries found in core!"

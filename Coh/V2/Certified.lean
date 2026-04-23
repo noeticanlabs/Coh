@@ -1,6 +1,14 @@
 import Coh.V2.Analytic
 import Mathlib.Data.Real.Basic
 
+/-!
+## Coh V2 Certified Morphisms
+
+This module formalizes the concept of certified morphisms in the Coh V2 framework.
+A certified morphism binds an observable trace to a cost-defect pair that
+satisfies the fundamental Coh inequality and is dominated by the analytic envelope.
+-/
+
 noncomputable section
 
 namespace Coh.V2

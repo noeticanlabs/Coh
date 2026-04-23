@@ -1,6 +1,14 @@
 import Coh.V2.Certified
 import Mathlib.Order.Basic
 
+/-!
+## Coh V2 Category Theory
+
+This module formalizes the category-theoretic structure of certified morphisms.
+It proves that certified morphisms form a locally preordered category,
+satisfying associativity and identity laws.
+-/
+
 noncomputable section
 
 namespace Coh.V2

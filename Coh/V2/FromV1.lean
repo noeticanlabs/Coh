@@ -1,5 +1,6 @@
 import Coh.V2.Certified
 import Coh.V2.BridgeLemmas
+import Mathlib.Algebra.Group.Defs
 import Mathlib.Data.Real.Basic
 import Mathlib.Tactic.Basic
 
@@ -7,7 +8,9 @@ import Mathlib.Tactic.Basic
 # V1 → V2 Bridge Layer
 
 This module implements the canonical embedding of the V1 operational kernel
-into the V2 projection-aware categorical completion.
+into the V2 projection-aware categorical completion. It defines a restricted
+system of loops at a fixed witness vertex, providing a total monoidal structure
+on the observable layer.
 -/
 
 noncomputable section
@@ -47,16 +50,21 @@ def hiddenSystemFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X �
 
 /--
 ## Observable system from V1
+Restricted to loops at a witness to satisfy monoidal assumptions.
 -/
-def observableSystemFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop) (h_id : RV (emptyTrace witness)) : ObservableSystem where
+def observableSystemFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop)
+    (h_id : RV (emptyTrace witness))
+    (h_comp : ∀ {t₁ t₂ t₁₂ : Trace X}, concat t₁ t₂ = some t₁₂ → RV t₁ → RV t₂ → RV t₁₂) :
+    ObservableSystem where
   V := { t : Trace X // RV t ∧ t.src = witness ∧ t.dst = witness }
-  comp t₂ t₁ := 
-    match h_c : concat t₁.1 t₂.1 with
+  comp t₂ t₁ :=
+    let t₁₂ := concat t₁.1 t₂.1
+    match h_c : t₁₂ with
     | none => none
-    | some t₁₂ => 
-        if h_rv : RV t₁₂ then
-          some ⟨t₁₂, h_rv, 
-            by 
+    | some t_val =>
+        if h_rv : RV t_val then
+          some ⟨t_val, h_rv,
+            by
               have h1 := t₁.2.2.1
               have h_c' := h_c
               unfold concat at h_c'
@@ -73,6 +81,61 @@ def observableSystemFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace 
   id := ⟨emptyTrace witness, h_id, rfl, rfl⟩
 
 /--
+Total composition for restricted traces.
+This allows providing a standard `Monoid` instance.
+-/
+def totalComp {X : Type} [DecidableEq X] {witness : X} {RV : Trace X → Prop}
+    (h_comp : ∀ {t₁ t₂ t₁₂ : Trace X}, concat t₁ t₂ = some t₁₂ → RV t₁ → RV t₂ → RV t₁₂)
+    (t₂ t₁ : { t : Trace X // RV t ∧ t.src = witness ∧ t.dst = witness }) :
+    { t : Trace X // RV t ∧ t.src = witness ∧ t.dst = witness } :=
+  let t₁_val := t₁.1
+  let t₂_val := t₂.1
+  have h_dst_src : t₁_val.dst = t₂_val.src := t₁.2.2.2.trans t₂.2.2.1.symm
+  let t₁₂_opt := concat t₁_val t₂_val
+  match h_c : t₁₂_opt with
+  | some t_val =>
+    ⟨t_val, h_comp h_c t₁.2.1 t₂.2.1,
+      by injection h_c with h_eq; rw [← h_eq]; exact t₁.2.2.1,
+      by injection h_c with h_eq; rw [← h_eq]; exact t₂.2.2.2⟩
+  | none => by unfold concat at h_c; split at h_c; contradiction
+
+instance instMonoidRestrictedTrace (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop)
+    (h_id : RV (emptyTrace witness))
+    (h_comp : ∀ {t₁ t₂ t₁₂ : Trace X}, concat t₁ t₂ = some t₁₂ → RV t₁ → RV t₂ → RV t₁₂) :
+    Monoid { t : Trace X // RV t ∧ t.src = witness ∧ t.dst = witness } where
+  mul := totalComp h_comp
+  one := ⟨emptyTrace witness, h_id, rfl, rfl⟩
+  mul_assoc t1 t2 t3 := by
+    apply Subtype.ext
+    simp [totalComp]
+    match h12 : concat t1.1 t2.1, h23 : concat t2.1 t3.1 with
+    | some t12, some t23 =>
+      match h123 : concat t12 t3 with
+      | some t123_val =>
+        have h_assoc := concat_assoc t1.1 t2.1 t3.1 t12 t23 t123_val h12 h23 h123
+        simp [h_assoc]
+      | none =>
+        -- This case is impossible due to dst=src
+        have h_dst_src : t12.dst = t3.1.src := by
+          injection h12 with h_eq
+          rw [← h_eq]
+          exact t2.2.2.2.trans t3.2.2.1.symm
+        unfold concat at h123; split at h123; contradiction
+    | _, _ =>
+      -- These cases are also impossible
+      repeat {
+        unfold concat at *
+        split at *
+        contradiction
+      }
+  one_mul t := by
+    apply Subtype.ext
+    simp [totalComp, concat_id_left]
+  mul_one t := by
+    apply Subtype.ext
+    simp [totalComp, concat_id_right]
+
+/--
 ## Projection from hidden to observable
 
 NOTE: Current projection is identity (singleton fiber model).
@@ -83,17 +146,24 @@ For a proper hidden/observable quotient, we would need to:
 This is a fundamental architectural choice: identity gives Fib(R) = {R}
 rather than a true fiber of hidden realizations over an observable trace.
 -/
-def projFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop) (h_id : RV (emptyTrace witness)) :
-    (hiddenSystemFromV1 X witness RV).G → (observableSystemFromV1 X witness RV h_id).V :=
+/--
+## Projection from hidden to observable
+-/
+def projFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop)
+    (h_id : RV (emptyTrace witness))
+    (h_comp : ∀ {t₁ t₂ t₁₂ : Trace X}, concat t₁ t₂ = some t₁₂ → RV t₁ → RV t₂ → RV t₁₂) :
+    (hiddenSystemFromV1 X witness RV).G → (observableSystemFromV1 X witness RV h_id h_comp).V :=
   fun ξ => ξ
 
 /--
 ## System instantiated from V1
 -/
-def systemFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop) (h_id : RV (emptyTrace witness)) : System where
+def systemFromV1 (X : Type) [DecidableEq X] (witness : X) (RV : Trace X → Prop)
+    (h_id : RV (emptyTrace witness))
+    (h_comp : ∀ {t₁ t₂ t₁₂ : Trace X}, concat t₁ t₂ = some t₁₂ → RV t₁ → RV t₂ → RV t₁₂) : System where
   Hid := hiddenSystemFromV1 X witness RV
-  Obs := observableSystemFromV1 X witness RV h_id
-  proj := projFromV1 X witness RV h_id
+  Obs := observableSystemFromV1 X witness RV h_id h_comp
+  proj := projFromV1 X witness RV h_id h_comp
 
 /--
 ## Assumptions from V1
@@ -104,47 +174,37 @@ theorem assumptionsFromV1
     (hRV_comp : ∀ (t₁ t₂ : Trace X) (t₁₂ : Trace X),
       concat t₁ t₂ = some t₁₂ →
       RV t₁ → RV t₂ → RV t₁₂) :
-    Assumptions (systemFromV1 X witness RV (hRV_id witness)) := {
+    Assumptions (systemFromV1 X witness RV (hRV_id witness) hRV_comp) := {
   obs_assoc := by
     intro R1 R2 R3 R12 R23 R123 h12 h23 h123a
     simp [systemFromV1, observableSystemFromV1] at *
+    rw [← h12, ← h23, ← h123a]
+    congr 1
+    apply Subtype.ext
+    simp [totalComp]
     match hr12 : concat R1.1 R2.1 with
-    | some t12 => 
-        rw [hr12] at h12
-        split at h12; case h_1 => contradiction
-        case h_2 =>
-          injection h12 with h12_eq
-          match hr23 : concat R2.1 R3.1 with
-          | some t23 =>
-              rw [hr23] at h23
-              split at h23; case h_1 => contradiction
-              case h_2 =>
-                injection h23 with h23_eq
-                match hr123 : concat R12.1 R3.1 with
-                | some t123 =>
-                    rw [hr123] at h123a
-                    split at h123a; case h_1 => contradiction
-                    case h_2 =>
-                      injection h123a with h123a_eq
-                      -- Now we need to show comp R23 R1 = some R123
-                      simp [systemFromV1, observableSystemFromV1]
-                      match hr23_final : concat R1.1 R23.1 with
-                      | some t123_final =>
-                          have h_assoc := concat_assoc R1.1 R2.1 R3.1 R12.1 R23.1 t123_final (by rw [← hr12]; rfl) (by rw [← hr23]; rfl) (by rw [← hr123, ← h12_eq]; simp)
-                          rw [h_assoc] at hr23_final
-                          injection hr23_final with hr23_final_eq
-                          simp [hr23_final_eq]
-                          split; case h_1 => contradiction
-                          case h_2 =>
-                            congr 1
-                            apply Subtype.ext
-                            simp [hr23_final_eq, h123a_eq]
-                      | none => 
-                          have h_assoc := concat_assoc R1.1 R2.1 R3.1 R12.1 R23.1 t123 (by rw [← hr12]; rfl) (by rw [← hr23]; rfl) (by rw [← hr123, ← h12_eq]; simp)
-                          rw [h_assoc] at hr23_final
-                          contradiction
-          | none => rw [hr23] at h23; contradiction
-    | none => rw [hr12] at h12; contradiction
+    | some t12 =>
+        match hr23 : concat R2.1 R3.1 with
+        | some t23 =>
+            match hr123 : concat t12 R3.1 with
+            | some t123_val =>
+                have h_assoc := concat_assoc R1.1 R2.1 R3.1 t12 t23 t123_val hr12 hr23 hr123
+                simp [h_assoc]
+            | none =>
+                -- dst=src ensures this is some
+                have h_dst_src : t12.dst = R3.1.src := by
+                  injection hr12 with h_eq
+                  rw [← h_eq]
+                  exact R2.2.2.2.trans R3.2.2.1.symm
+                unfold concat at hr123; split at hr123; contradiction
+        | none =>
+            -- dst=src ensures this is some
+            have h_dst_src : R2.1.dst = R3.1.src := R2.2.2.2.trans R3.2.2.1.symm
+            unfold concat at hr23; split at hr23; contradiction
+    | none =>
+        -- dst=src ensures this is some
+        have h_dst_src : R1.1.dst = R2.1.src := R1.2.2.2.trans R2.2.2.1.symm
+        unfold concat at hr12; split at hr12; contradiction
 
   obs_id_right := by
     intro R
