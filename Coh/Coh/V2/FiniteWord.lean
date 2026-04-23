@@ -108,11 +108,6 @@ def assumptions {A B : Type} [Fintype A] [DecidableEq A] [Fintype B] [DecidableE
       · simp [Fiber, proj, h]
         rw [List.map_drop, List.drop_map, h, List.drop_left_append] }
 
-/-- Structure to package a system and its verified assumptions. -/
-structure VerifiedSystem where
-  sys : System
-  asm : Assumptions sys
-
 /-- Constructor for a finite word system with its verified assumptions. -/
 def mkFiniteWordSystem
     {A B : Type} [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]

@@ -20,7 +20,9 @@ jobs:
       - name: Build project
         run: |
           cd Coh
-          lake build
+          lake build Coh
+          lake build Coh.V2.FiniteWord
+          lake build Coh.V2.FromV1
 
       - name: Formal tests
         run: |

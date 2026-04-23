@@ -69,4 +69,9 @@ structure Assumptions (S : System) : Prop where
         ξ₂ ∈ Fiber S R₂ ∧
         ξ₁ ∈ Fiber S R₁
 
+/-- Structure to package a system and its verified assumptions. -/
+structure VerifiedSystem where
+  sys : System
+  asm : Assumptions sys
+
 end Coh.V2

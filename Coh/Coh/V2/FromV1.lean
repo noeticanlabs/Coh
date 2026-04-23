@@ -82,4 +82,8 @@ theorem assumptions : Assumptions (system X) :=
     · exact hc
     · constructor <;> rfl }
 
+/-- The unified bridge certification theorem required by the contract. -/
+def assumptionsFromV1 [Nonempty X] : VerifiedSystem :=
+  ⟨system X, assumptions⟩
+
 end Coh.V2.FromV1
