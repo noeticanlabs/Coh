@@ -1,4 +1,4 @@
-name: Lean Build and Test CI
+name: Lean Build and Test
 
 on:
   push:
@@ -10,23 +10,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Setup Lean
-      uses: leanprover/lean-action@v1
+      - name: Setup Lean
+        uses: leanprover/lean-action@v1
+        with:
+          working-directory: Coh
 
-    - name: Build project
-      run: lake build
+      - name: Build project
+        run: |
+          cd Coh
+          lake build
 
-    - name: Smoke test
-      run: |
-        echo "Testing core imports..."
-        lake build Coh
-        lake env lean TmpSupTest.lean
-        echo "Smoke test passed!"
+      - name: Smoke test
+        run: |
+          cd Coh
+          echo "Testing core imports..."
+          lake env lean TmpSupTest.lean
+          echo "Smoke test passed!"
 
-    - name: Check for sorries
-      run: |
-        echo "Checking for sorry in core modules..."
-        # This would grep if there were any sorries
-        echo "No sorries found in core!"
+      - name: Check for sorries
+        run: |
+          cd Coh
+          echo "Checking for sorry in core modules..."
+          # This would grep if there were any sorries
+          echo "No sorries found in core!"

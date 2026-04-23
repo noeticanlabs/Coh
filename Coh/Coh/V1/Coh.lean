@@ -98,7 +98,7 @@ theorem traceSpend_eq_stepsSpend {X : Type} (t : Trace X) :
   match t with
   | ⟨src, dst, steps, chain⟩ =>
     induction steps generalizing src dst
-    case nil => simp [traceSpend, stepsSpend]
+    case nil => rfl
     case cons s ss ih =>
       simp [traceSpend, stepsSpend]
       apply ih s.dst dst (by
@@ -123,7 +123,7 @@ theorem traceDefect_eq_stepsDefect {X : Type} (t : Trace X) :
   match t with
   | ⟨src, dst, steps, chain⟩ =>
     induction steps generalizing src dst
-    case nil => simp [traceDefect, stepsDefect]
+    case nil => rfl
     case cons s ss ih =>
       simp [traceDefect, stepsDefect]
       apply ih s.dst dst (by

@@ -3,7 +3,7 @@
 -/
 
 import Coh.V2.FiniteWord
-import Mathlib.Data.Real.NNReal
+import Mathlib.Data.NNReal.Basic
 
 open Coh.V2.FiniteWord
 

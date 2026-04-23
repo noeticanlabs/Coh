@@ -1,7 +1,7 @@
 import Coh.V2.Primitive
 import Coh.V2.Definitions
 import Coh.V2.Axioms
-import Mathlib.Data.Real.NNReal
+import Mathlib.Data.NNReal.Basic
 import Mathlib.Data.Fintype.Basic
 
 /-!

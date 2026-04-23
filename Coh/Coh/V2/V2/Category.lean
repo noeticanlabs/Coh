@@ -50,37 +50,37 @@ theorem assoc_certified
     (h₁₂₃b : S.Obs.comp R₃₂ f.trace = some R₃₂₁b) :
     Coh.V2.compose V (Coh.V2.compose V f g h₁₂) h h₁₂₃a =
     Coh.V2.compose V f (Coh.V2.compose V g h h₂₃) h₁₂₃b := by
-  ext
+  apply CertifiedMor.ext
   · have h_assoc := Assumptions.obs_assoc A h₁₂ h₂₃ h₁₂₃a
     rw [h_assoc] at h₁₂₃b
     injection h₁₂₃b
-  · simp [Coh.V2.compose, add_assoc]
-  · simp [Coh.V2.compose, add_assoc]
+  · simp [compose, add_assoc]
+  · simp [compose, add_assoc]
 
 /-- Identity laws for certified composition. -/
 theorem id_right_certified
     (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ)
     {x y : X} (f : Coh.V2.CertifiedMor S A V x y)
     {R : S.Obs.V} (hcomp : S.Obs.comp f.trace S.Obs.id = some R) :
-    Coh.V2.compose V (Coh.V2.idMor V x) f hcomp = f := by
-  ext
+    Coh.V2.compose V (idMor V x) f hcomp = f := by
+  apply CertifiedMor.ext
   · have h_id := Assumptions.obs_id_right A f.trace
     rw [h_id] at hcomp
     injection hcomp
-  · simp [Coh.V2.compose, Coh.V2.idMor]
-  · simp [Coh.V2.compose, Coh.V2.idMor]
+  · simp [compose, idMor]
+  · simp [compose, idMor]
 
 theorem id_left_certified
     (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ)
     {x y : X} (f : Coh.V2.CertifiedMor S A V x y)
     {R : S.Obs.V} (hcomp : S.Obs.comp S.Obs.id f.trace = some R) :
-    Coh.V2.compose V f (Coh.V2.idMor V y) hcomp = f := by
-  ext
+    Coh.V2.compose V f (idMor V y) hcomp = f := by
+  apply CertifiedMor.ext
   · have h_id := Assumptions.obs_id_left A f.trace
     rw [h_id] at hcomp
     injection hcomp
-  · simp [Coh.V2.compose, Coh.V2.idMor]
-  · simp [Coh.V2.compose, Coh.V2.idMor]
+  · simp [compose, idMor]
+  · simp [compose, idMor]
 
 /-- A category where each hom-set is a local preorder. -/
 structure LocalPreorderCategory (Obj : Type u) where
@@ -109,7 +109,7 @@ def certifiedCategory
         Σ' R₂₁ : S.Obs.V, S.Obs.comp g.trace f.trace = some R₂₁) :
     LocalPreorderCategory X :=
   let idObj : ∀ x : X, Coh.V2.CertifiedMor S A V x x :=
-    fun x => Coh.V2.idMor (S := S) (A := A) (X := X) V x
+    fun x => idMor (S := S) (A := A) (X := X) V x
   let compObj :
       ∀ {x y z : X},
         Coh.V2.CertifiedMor S A V x y →
@@ -117,18 +117,18 @@ def certifiedCategory
       Coh.V2.CertifiedMor S A V x z :=
     fun {x y z} f g =>
       let p := chooseComp f g
-      Coh.V2.compose (S := S) (A := A) (X := X) V f g p.2
-  have id_right : ∀ {x y : X} (f : Coh.V2.CertifiedMor S A V x y),
+      compose (S := S) (A := A) (X := X) V f g p.2
+  have id_right_law : ∀ {x y : X} (f : Coh.V2.CertifiedMor S A V x y),
       compObj (idObj x) f = f := by
     intro x y f
     let p := chooseComp (idObj x) f
     apply id_right_certified S A X V f p.2
-  have id_left : ∀ {x y : X} (f : Coh.V2.CertifiedMor S A V x y),
+  have id_left_law : ∀ {x y : X} (f : Coh.V2.CertifiedMor S A V x y),
       compObj f (idObj y) = f := by
     intro x y f
     let p := chooseComp f (idObj y)
     apply id_left_certified S A X V f p.2
-  have comp_assoc : ∀ {w x y z : X}
+  have assoc_law : ∀ {w x y z : X}
       (f : Coh.V2.CertifiedMor S A V w x)
       (g : Coh.V2.CertifiedMor S A V x y)
       (h : Coh.V2.CertifiedMor S A V y z),
@@ -139,7 +139,7 @@ def certifiedCategory
     let p₁₂₃a := chooseComp (compObj f g) h
     let p₁₂₃b := chooseComp f (compObj g h)
     apply assoc_certified S A X V f g h p₁₂.2 p₂₃.2 p₁₂₃a.2 p₁₂₃b.2
-  have comp_monotone : ∀ {x y z : X} {f₁ f₂ : Coh.V2.CertifiedMor S A V x y} {g₁ g₂ : Coh.V2.CertifiedMor S A V y z},
+  have comp_monotone_law : ∀ {x y z : X} {f₁ f₂ : Coh.V2.CertifiedMor S A V x y} {g₁ g₂ : Coh.V2.CertifiedMor S A V y z},
       (f₁ ≤ f₂) → (g₁ ≤ g₂) → compObj f₁ g₁ ≤ compObj f₂ g₂ := by
     intro x y z f1 f2 g1 g2 hf hg
     rcases hf with ⟨htf, hsf, hdf⟩
@@ -159,11 +159,11 @@ def certifiedCategory
   { Hom := fun x y => Coh.V2.CertifiedMor S A V x y,
     id := idObj,
     comp := compObj,
-    comp_assoc := comp_assoc,
-    id_right := id_right,
-    id_left := id_left,
+    comp_assoc := assoc_law,
+    id_right := id_right_law,
+    id_left := id_left_law,
     homPreorder := fun {x y} => instHomPartialOrder S A X V,
-    comp_monotone := comp_monotone }
+    comp_monotone := comp_monotone_law }
 
 /-- The main theorem: certified morphisms determine a locally preordered category. -/
 theorem certified_category
