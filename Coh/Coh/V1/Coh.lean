@@ -1,0 +1,179 @@
+import Mathlib.Data.Real.Basic
+import Mathlib.Data.List.Basic
+import Mathlib.Tactic.Basic
+
+noncomputable section
+
+namespace Coh.V1
+
+inductive GlyphTag
+| invoke
+| bind
+| route
+| guard
+| emit
+deriving DecidableEq, Repr
+
+structure ControlToken where
+  opcode : String
+  arg    : String
+deriving DecidableEq, Repr
+
+structure Glyph where
+  tag         : GlyphTag
+  surface     : String
+  token       : ControlToken
+  wf_surface  : Prop
+  wf_token    : Prop
+deriving DecidableEq
+
+def Glyph.compiles (g : Glyph) : Prop :=
+  g.wf_surface ∧ g.wf_token
+
+structure Step (X : Type) where
+  src         : X
+  dst         : X
+  glyph       : Glyph
+  costSpend   : ℚ
+  costDefect  : ℚ
+  typed       : Prop
+  compiles_ok : Glyph.compiles glyph
+deriving DecidableEq
+
+/-- Recursive predicate for a valid transition chain. -/
+def is_chain {X : Type} : X → X → List (Step X) → Prop
+| s, e, [] => s = e
+| s, e, (step :: steps) => s = step.src ∧ is_chain step.dst e steps
+
+structure Trace (X : Type) where
+  src   : X
+  dst   : X
+  steps : List (Step X)
+  chain : is_chain src dst steps
+deriving DecidableEq
+
+@[ext, simp]
+theorem Trace.ext {X : Type} (t1 t2 : Trace X)
+    (h_src : t1.src = t2.src) (h_dst : t1.dst = t2.dst) (h_steps : t1.steps = t2.steps) :
+    t1 = t2 := by
+  cases t1; cases t2
+  subst h_src h_dst h_steps
+  congr
+
+def traceSpend {X : Type} : Trace X → ℚ
+| ⟨_, _, [], _⟩ => 0
+| ⟨_, dst, s :: ss, chain⟩ => 
+    s.costSpend + traceSpend ⟨s.dst, dst, ss, by
+      simp [is_chain] at chain
+      exact chain.2
+    ⟩
+termination_by t => t.steps.length
+
+def traceDefect {X : Type} : Trace X → ℚ
+| ⟨_, _, [], _⟩ => 0
+| ⟨_, dst, s :: ss, chain⟩ => 
+    s.costDefect + traceDefect ⟨s.dst, dst, ss, by
+      simp [is_chain] at chain
+      exact chain.2
+    ⟩
+termination_by t => t.steps.length
+
+def RVAccept (X : Type) (t : Trace X) : Prop := 
+  ∀ s ∈ t.steps, s.typed
+
+def emptyTrace {X : Type} (x : X) : Trace X :=
+{ src   := x,
+  dst   := x,
+  steps := List.nil,
+  chain := rfl }
+
+/-- Lemma: is_chain is compositional under list concatenation. -/
+theorem is_chain_concat {X : Type} (s m e : X) (t1 t2 : List (Step X)) :
+    is_chain s m t1 → is_chain m e t2 → is_chain s e (t1 ++ t2) := by
+  induction t1 generalizing s
+  case nil =>
+    intro h1 h2
+    simp [is_chain] at h1
+    rw [h1]
+    exact h2
+  case cons head tail ih =>
+    intro h1 h2
+    simp [is_chain] at h1
+    simp [is_chain]
+    exact ⟨h1.1, ih head.dst h1.2 h2⟩
+
+def concat {X : Type} [DecidableEq X] (t₁ t₂ : Trace X) : Option (Trace X) :=
+  if h : t₁.dst = t₂.src then
+    some {
+      src   := t₁.src,
+      dst   := t₂.dst,
+      steps := t₁.steps ++ t₂.steps,
+      chain := is_chain_concat t₁.src t₁.dst t₂.dst t₁.steps t₂.steps t₁.chain (by rw [h]; exact t₂.chain)
+    }
+  else none
+
+theorem concat_assoc {X : Type} [DecidableEq X] (t₁ t₂ t₃ : Trace X) (t₁₂ t₂₃ t₁₂₃ : Trace X)
+    (h12 : concat t₁ t₂ = some t₁₂)
+    (h23 : concat t₂ t₃ = some t₂₃)
+    (h123a : concat t₁₂ t₃ = some t₁₂₃) :
+    concat t₁ t₂₃ = some t₁₂₃ := by
+  unfold concat at h12 h23 h123a
+  split at h12; case isFalse => contradiction
+  case isTrue h12_dst =>
+    injection h12 with h12_eq
+    split at h23; case isFalse => contradiction
+    case isTrue h23_dst =>
+      injection h23 with h23_eq
+      split at h123a; case isFalse => contradiction
+      case isTrue h123_dst =>
+        injection h123a with h123_eq
+        unfold concat
+        split; case isFalse h_neq =>
+          have h23_src_val : t₂₃.src = t₂.src := by rw [← h23_eq]
+          rw [h23_src_val, ← h12_dst] at h_neq
+          contradiction
+        case isTrue h_eq =>
+          rw [← h123_eq]
+          congr 1
+          apply Trace.ext
+          · have h_src_12 : t₁₂.src = t₁.src := by rw [← h12_eq]
+            simp [h_src_12]
+          · have h_dst_23 : t₂₃.dst = t₃.dst := by rw [← h23_eq]
+            simp [h_dst_23]
+          · have h_steps_12 : t₁₂.steps = t₁.steps ++ t₂.steps := by rw [← h12_eq]
+            have h_steps_23 : t₂₃.steps = t₂.steps ++ t₃.steps := by rw [← h23_eq]
+            simp [h_steps_12, h_steps_23, List.append_assoc]
+
+theorem concat_id_right {X : Type} [DecidableEq X] (t : Trace X) :
+    concat t (emptyTrace t.dst) = some t := by
+  simp [concat, emptyTrace, Trace.ext]
+
+theorem concat_id_left {X : Type} [DecidableEq X] (t : Trace X) :
+    concat (emptyTrace t.src) t = some t := by
+  simp [concat, emptyTrace, Trace.ext]
+
+theorem rv_id (X : Type) (x : X) : RVAccept X (emptyTrace x) := by
+  simp [RVAccept, emptyTrace]
+
+theorem rv_comp (X : Type) [DecidableEq X] (t₁ t₂ t₁₂ : Trace X)
+    (h : concat t₁ t₂ = some t₁₂) :
+    RVAccept X t₁ → RVAccept X t₂ → RVAccept X t₁₂ := by
+  unfold concat at h
+  split at h; case isFalse => contradiction
+  case isTrue h_dst =>
+    injection h with h_eq
+    subst h_eq
+    simp [RVAccept]
+    intro h1 h2 s hs
+    cases hs
+    case inl h_in => exact h1 s h_in
+    case inr h_in => exact h2 s h_in
+
+structure CohMor (X : Type) (V : X → ℚ) (x y : X) where
+  trace  : Trace X
+  src_eq : trace.src = x
+  dst_eq : trace.dst = y
+  rv_ok  : RVAccept X trace
+  valid  : V y + traceSpend trace ≤ V x + traceDefect trace
+
+end Coh.V1

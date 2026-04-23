@@ -1,4 +1,9 @@
 
+import init
+import Coh.Coh.V1.Coh
+import Mathlib.Data.Nat.Basic
+import Mathlib.Data.List.Basic
+
 inductive GlyphTag
 | invoke
 | bind
@@ -52,11 +57,22 @@ def emptyTrace {X : Type} (x : X) : Trace X :=
     intro i h
     cases Nat.not_lt_zero _ h }
 
+import init
+import Coh.Coh.V1.Coh
+
 def concat {X : Type} (t₁ t₂ : Trace X) : Trace X :=
 { steps := t₁.steps ++ t₂.steps,
   chain := by
     intro i h
-    sorry }
+    cases i with i =>
+    . exact t₁.chain (Nat.zero_lt_succ _)
+    . case succ i' =>
+      have hlen := Nat.le_of_succ_le_succ h
+      cases Nat.le_lt_ine i' t₁.steps.length hlen with hle hlt
+      . exact t₁.chain _ (Nat.succ_lt_succ hle)
+      . subst i
+        apply t₂.chain (Nat.lt_of_add_lt_add_left (by simpa))
+}
 
 structure CohMor (X : Type) (V : X → ℚ) (x y : X) where
   trace  : Trace X
