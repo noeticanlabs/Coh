@@ -1,7 +1,3 @@
-/-!
-## Quick Sup and Cost Test
--/
-
 import Coh.V2.FiniteWord
 import Mathlib.Data.NNReal.Basic
 

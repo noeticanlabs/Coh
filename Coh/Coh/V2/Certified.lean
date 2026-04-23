@@ -58,18 +58,7 @@ def idMor {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ) (x : X) 
   defect_bound := by
     simpa [delta_id A]
 
-/--
-`id_certified` mirrors the manuscript lemma:
-the identity datum is certified because it is constructed as a `CertifiedMor`.
--/
-def id_certified {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ) (x : X) :
-    CertifiedMor S A V x x :=
-  idMor V x
-
-/--
-Composition of certified morphisms.
-This corresponds to the manuscript definition of certified composition.
--/
+/-- Composition of certified morphisms. -/
 def compose {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
     {x y z : X}
     (f : CertifiedMor S A V x y)
@@ -92,18 +81,5 @@ def compose {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
     have hb : delta S f.trace + delta S g.trace ≤ f.defect + g.defect :=
       add_le_add f.defect_bound g.defect_bound
     exact hδ.trans hb
-
-/--
-`compose_certified` mirrors the manuscript lemma:
-the composite datum is certified because `compose` returns a `CertifiedMor`.
--/
-def compose_certified {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
-    {x y z : X}
-    (f : CertifiedMor S A V x y)
-    (g : CertifiedMor S A V y z)
-    {R₂₁ : S.Obs.V}
-    (hcomp : S.Obs.comp g.trace f.trace = some R₂₁) :
-    CertifiedMor S A V x z :=
-  compose V f g hcomp
 
 end Coh.V2

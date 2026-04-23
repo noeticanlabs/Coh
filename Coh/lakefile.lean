@@ -1,13 +1,6 @@
 import Lake
 open Lake DSL
 
-/-!
-## Coh Project Configuration
-
-This file configures the Coh Lean 4 package.
-It requires mathlib4 and defines the core library targets.
--/
-
 package «Coh» where
   -- add package configuration options here
 

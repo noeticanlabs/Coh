@@ -16,13 +16,6 @@ noncomputable section
 
 namespace Coh.V2
 
-/-
-## Finite-Word Model
-
-Hidden G = List (A × B), Observable V = List A.
-Projection drops hidden refinement, cost sums over hidden.
--/
-
 section
   variable {A B : Type} [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
   variable (c_B : B → NNReal)
