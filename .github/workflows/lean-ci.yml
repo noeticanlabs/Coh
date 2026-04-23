@@ -18,18 +18,16 @@ jobs:
         ~/.local/bin/elan toolchain install leanprover/lean4:v4.30.0-rc2
 
     - name: Build project
-      working-directory: Coh
       run: lake build
 
     - name: Smoke test
-      working-directory: Coh
       run: |
         echo "Testing core imports..."
-        lake exe lean --run TmpSupTest.lean
+        lake build Coh
+        lake env lean TmpSupTest.lean
         echo "Smoke test passed!"
 
     - name: Check for sorries
-      working-directory: Coh
       run: |
         echo "Checking for sorry in core modules..."
         # This would grep if there were any sorries
