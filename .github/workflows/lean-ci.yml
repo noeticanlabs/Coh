@@ -12,32 +12,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore cache
+        uses: actions/cache/restore@v5
+        with:
+          path: Coh/.lake
+          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lake-manifest.json') }}
+          restore-keys: |
+            lake-${{ runner.os }}-
+
       - name: Setup Lean
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: Coh
+          use-mathlib-cache: true # This still helps with Mathlib specifically
+
+      - name: Detect Mathlib
+        run: |
+          cd Coh
+          if grep -q "require mathlib" lakefile.lean; then
+            echo "Mathlib detected, ensuring cache is retrieved..."
+            lake exe cache get || echo "Cache get failed, continuing with full build..."
+          else
+            echo "Mathlib not detected."
+          fi
 
       - name: Build project
         run: |
           cd Coh
-          lake build Coh
-          lake build Coh.V2.FiniteWord
-          lake build Coh.V2.FromV1
+          lake build
+
+      - name: Save cache
+        uses: actions/cache/save@v5
+        with:
+          path: Coh/.lake
+          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lake-manifest.json') }}
 
       - name: Formal tests
         run: |
           cd Coh
-          echo "Running formal regression tests..."
           lake build FiniteWordTests
-          echo "Tests passed!"
+          ./.lake/build/bin/FiniteWordTests
 
       - name: Check for sorries
         run: |
           cd Coh
           echo "Scanning for unfinished proofs (sorry)..."
-          if grep -r "sorry" Coh/Coh; then
-            echo "Error: Found 'sorry' in core modules. Build failed."
+          if grep -r "sorry" Coh; then
+            echo "Error: Found 'sorry' in formalization. Build failed."
             exit 1
           else
-            echo "No 'sorry' found in core modules."
+            echo "No 'sorry' found."
           fi

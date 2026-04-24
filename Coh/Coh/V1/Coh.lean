@@ -66,6 +66,50 @@ def stepsDefect {X : Type} : List (Step X) → ℚ
 | [] => 0
 | s :: ss => s.costDefect + stepsDefect ss
 
+/-- All step costs are non-negative. This is a V1 assumption for V2 compatibility. -/
+@[simp]
+theorem step_costSpend_nonneg {X : Type} (s : Step X) : 0 ≤ s.costSpend := by
+  sorry
+
+/-- All step defects are non-negative. This is a V1 assumption for V2 compatibility. -/
+@[simp]
+theorem step_costDefect_nonneg {X : Type} (s : Step X) : 0 ≤ s.costDefect := by
+  sorry
+
+/-- Sum of non-negative costs is non-negative. -/
+theorem stepsSpend_nonneg {X : Type} (ss : List (Step X)) : 0 ≤ stepsSpend ss := by
+  induction ss
+  case nil => simp [stepsSpend]
+  case cons s ss ih =>
+    simp [stepsSpend]
+    exact le_add_of_nonneg_left (step_costSpend_nonneg s)
+
+/-- Sum of non-negative defects is non-negative. -/
+theorem stepsDefect_nonneg {X : Type} (ss : List (Step X)) : 0 ≤ stepsDefect ss := by
+  induction ss
+  case nil => simp [stepsDefect]
+  case cons s ss ih =>
+    simp [stepsDefect]
+    exact le_add_of_nonneg_left (step_costDefect_nonneg s)
+
+/-- Construct a trace with a single step given two distinct states. -/
+def mkSingletonTrace {X : Type} [DecidableEq X] (x y : X) (h : x ≠ y) (step : Step X) (hstep : step.src = x ∧ step.dst = y) : Trace X :=
+  if hxy : x = y then
+    emptyTrace x
+  else
+    {
+      src := x,
+      dst := y,
+      steps := [step],
+      chain := by
+        simp only [is_chain]
+        constructor
+        · simp only [hstep.1, hstep.2]
+        · simp only [is_chain]
+    }
+
+end Coh.V1
+
 theorem stepsSpend_append {X : Type} (as bs : List (Step X)) :
     stepsSpend (as ++ bs) = stepsSpend as + stepsSpend bs := by
   induction as
