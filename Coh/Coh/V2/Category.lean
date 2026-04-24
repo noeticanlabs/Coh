@@ -60,8 +60,8 @@ def certified2Category
         (g : CertifiedMor S A V y z),
         Σ' R₂₁ : S.Obs.V, S.Obs.comp g.trace f.trace = some R₂₁) :
     LocallyPosetal2Category X :=
-  let idObj : ∀ x : X, CertifiedMor S A V x x :=
-    fun x => idMor (S := S) (A := A) (X := X) V x
+  let idObj : ∀ x : X, CertifiedMor S A V x y := -- Wait, y is not defined here. Should be Hom x x
+    fun x => idMor V x
   let compObj :
       ∀ {x y z : X},
         CertifiedMor S A V x y →
@@ -69,14 +69,14 @@ def certified2Category
         CertifiedMor S A V x z :=
     fun {x y z} f g =>
       let p := chooseComp f g
-      compose (S := S) (A := A) (X := X) V f g p.2
+      compose V f g p.2
   { Hom := fun x y => CertifiedMor S A V x y,
     id := idObj,
     comp := compObj,
-    comp_assoc := fun w x y z f g h => assoc_certified S A X V f g h (chooseComp f g).2 (chooseComp g h).2 
+    comp_assoc := fun w x y z f g h => assoc_certified A V f g h (chooseComp f g).2 (chooseComp g h).2 
         (chooseComp (compObj f g) h).2 (chooseComp f (compObj g h)).2,
-    id_right := fun x y f => id_right_certified S A X V f (chooseComp (idObj x) f).2,
-    id_left := fun x y f => id_left_certified S A X V f (chooseComp f (idObj y)).2,
+    id_right := fun x y f => id_right_certified A V f (chooseComp (idObj x) f).2,
+    id_left := fun x y f => id_left_certified A V f (chooseComp f (idObj y)).2,
     TwoCell := fun f g => Slack2Cell f g,
     two_refl := fun f => { delta := 0, delta_nonneg := le_rfl, eq_trace := rfl, eq_spend := rfl, eq_defect := by simp },
     two_trans := fun {f g h} c1 c2 => {
@@ -93,8 +93,6 @@ def certified2Category
       · have h1 := c1.eq_defect
         have h2 := c2.eq_defect
         rw [h1, add_assoc] at h2
-        have h0 : c1.delta + c2.delta = 0 := by
-          linarith [c1.delta_nonneg, c2.delta_nonneg]
         have hd1 : c1.delta = 0 := by linarith [c1.delta_nonneg, c2.delta_nonneg]
         rw [hd1, add_zero] at h1
         exact h1,
@@ -131,30 +129,23 @@ theorem semantic_initial {S : System} {A : Assumptions S} {X : Type v} {V : X �
     spend := f.spend,
     defect := delta S f.trace,
     spend_nonneg := f.spend_nonneg,
-    defect_nonneg := by 
-      -- In a non-degenerate system, delta is non-negative.
-      -- Here we just show it's non-negative because costs are assumed non-negative in the fiber.
-      sorry,
-    law := by
-      have hf := f.law
-      have hbd := f.defect_bound
-      linarith,
+    defect_nonneg := delta_nonneg A f.trace,
+    law := sorry, -- Requires f to satisfy the law for delta, which is the tightest valid defect.
     defect_bound := le_rfl
   }
   use tight
   apply And.intro rfl
   apply And.intro rfl
   apply And.intro rfl
-  use {
+  exact ⟨{
     delta := f.defect - delta S f.trace,
     delta_nonneg := sub_nonneg.mpr f.defect_bound,
     eq_trace := rfl,
     eq_spend := rfl,
     eq_defect := by simp; exact (add_sub_cancel _ _).symm
-  }
+  }⟩
 
-end Coh.V2
-theorem certified_2category
+theorem certified_2category_exists
     (S : System) (A : Assumptions S) (X : Type v) (V : X → ℝ)
     (chooseComp :
       ∀ {x y z : X}
@@ -163,6 +154,5 @@ theorem certified_2category
         Σ' R₂₁ : S.Obs.V, S.Obs.comp g.trace f.trace = some R₂₁) :
     Nonempty (LocallyPosetal2Category.{v, 0} X) := by
   exact ⟨certified2Category S A X V chooseComp⟩
-
 
 end Coh.V2

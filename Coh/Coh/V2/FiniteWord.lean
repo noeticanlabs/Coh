@@ -46,16 +46,14 @@ theorem cost_bound {A B : Type} [Fintype B] [Nonempty B] (c_B : B → NNReal) (�
       have hmax : c_B p.2 ≤ c_max c_B := by
         exact Finset.le_max' _ _ (Finset.mem_image_of_mem c_B (Finset.mem_univ _))
       have h2 : (c_B p.2 : ℝ) ≤ (c_max c_B : ℝ) := NNReal.coe_le_coe.mpr hmax
-      -- Prove: (1 : ℝ) + rest.length = rest.length + (1 : ℝ) using arithmetic lemmas
-      have arith : ((1 : ℝ) + (rest.length : ℝ)) = ((rest.length : ℝ) + (1 : ℝ)) := by
-        simp [add_comm]
       calc
         hiddenCost c_B (p :: rest)
           = (c_B p.2 : ℝ) + hiddenCost c_B rest := rfl
         _ ≤ (c_max c_B : ℝ) + (rest.length : ℝ) * (c_max c_B : ℝ) := add_le_add h2 ih
-        _ = ((1 : ℝ) + (rest.length : ℝ)) * (c_max c_B : ℝ) := by simp [add_mul, one_mul]
-        _ = ((rest.length : ℝ) + (1 : ℝ)) * (c_max c_B : ℝ) := by rw [arith]
-        _ = ((p :: rest).length : ℝ) * (c_max c_B : ℝ) := by simp [List.length_cons]
+        _ = (1 + (rest.length : ℝ)) * (c_max c_B : ℝ) := by simp [add_mul]
+        _ = ((rest.length : ℝ) + 1) * (c_max c_B : ℝ) := by rw [add_comm]
+        _ = ((p :: rest).length : ℝ) * (c_max c_B : ℝ) := by 
+          simp only [List.length_cons, Nat.cast_add, Nat.cast_one]
 
 /-- Hidden composition is list concatenation. -/
 def hComp {A B : Type} (x1 x2 : HiddenG A B) : Option (HiddenG A B) := some (List.append x1 x2)
@@ -79,43 +77,70 @@ def system {A B : Type} (c_B : B → NNReal) : System where
 /-- Assumptions implementation for FiniteWord. -/
 def assumptions {A B : Type} [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
     [Nonempty B] (c_B : B → NNReal) : Assumptions (system (A := A) (B := B) c_B) :=
-{ obs_assoc := fun {R1 R2 R3 R12 R23 R123} h12 h23 h312 => by
-      -- oComp (some R1) (some R2) = some (R1 ++ R2)
-      rw [h12, h23, h312]
-      rfl
+{ obs_assoc := fun {R1 R2 R3 R12 R23 R123} h12 h23 h123a => by
+    unfold system observableSystem oComp at *
+    cases h12; cases h23; cases h123a
+    simp [List.append_assoc]
   obs_id_right := fun R => by
-      -- R ++ [] = R
-      unfold oComp obsId
-      cases R
-      · rfl
-      · rfl
+    unfold system observableSystem oComp obsId; simp
   obs_id_left := fun R => by
-      -- [] ++ R = R
-      unfold oComp obsId
-      cases R
-      · rfl
-      · rfl
+    unfold system observableSystem oComp obsId; simp
   fiber_nonempty := fun R => by
-      let b0 := Classical.choice (by infer_instance : Nonempty B)
-      use R.map fun a => (a, b0)
-      rfl
+    let b := Classical.choice (by infer_instance : Nonempty B)
+    use R.map (fun a => (a, b))
+    unfold Fiber system
+    simp only [Set.mem_setOf_eq]
+    induction R with
+    | nil => rfl
+    | cons head tail ih => 
+      simp only [List.map_cons, proj, Prod.fst]
+      rw [ih]
   fiber_bounded := fun R => by
-      use (R.length : ℝ) * (c_max c_B : ℝ)
-      intro c hx
-      rcases hx with ⟨ξ, hξ, rfl⟩
-      calc (hiddenCost c_B ξ) ≤ (ξ.length : ℝ) * (c_max c_B : ℝ) := cost_bound c_B ξ
-        _ = ((proj ξ).length : ℝ) * (c_max c_B : ℝ) := by rw [proj_length]
-        _ = (R.length : ℝ) * (c_max c_B : ℝ) := by rw [hξ]
+    use (R.length : ℝ) * (c_max c_B : ℝ)
+    intro c hc
+    rcases hc with ⟨ξ, hξ, rfl⟩
+    unfold system Fiber at hξ
+    simp only [Set.mem_setOf_eq] at hξ
+    have hlen : ξ.length = R.length := by
+      rw [← List.length_map ξ Prod.fst, hξ]
+    rw [← hlen]
+    apply cost_bound
   id_fiber_zero := fun ξ hξ => by
-      cases ξ
-      · rfl
-      · rename_i a t
-        simp at hξ
-  hidden_cost_add := fun {x2 x1 x} h => by
-      cases h
-      rfl
-  fiber_decomp := fun {R1 R2 R21 ξ} hc h => by
-      sorry }
+    unfold system observableSystem obsId Fiber at hξ
+    simp only [Set.mem_setOf_eq] at hξ
+    have hlen : ξ.length = 0 := by 
+      rw [← List.length_map ξ Prod.fst, hξ, List.length_nil]
+    cases ξ <;> simp [hiddenCost]
+    case cons => contradiction
+  hidden_cost_add := fun {ξ₂ ξ₁ ξ} h => by
+    unfold system hiddenSystem hComp at h
+    cases h
+    simp [system, hiddenSystem, hiddenCost, List.map_append, List.sum_append]
+  cost_nonneg := fun ξ => by
+    simp [hiddenCost]
+    apply List.sum_nonneg
+    intro c hc
+    rcases List.mem_map.mp hc with ⟨p, _, rfl⟩
+    exact NNReal.coe_nonneg _
+  fiber_decomp := fun {R₁ R₂ R₂₁ ξ} hc hξ => by
+    unfold system observableSystem oComp at hc
+    cases hc
+    unfold system Fiber at hξ
+    simp only [Set.mem_setOf_eq] at hξ
+    let n := R₂.length
+    use ξ.take n, ξ.drop n
+    constructor
+    · unfold system hiddenSystem hComp; simp
+    · constructor
+      · unfold Fiber system
+        simp only [Set.mem_setOf_eq]
+        rw [List.map_take, hξ, List.take_left]
+      · unfold Fiber system
+        simp only [Set.mem_setOf_eq]
+        rw [List.map_drop, hξ, List.drop_left]
+  structural_independence := by
+    -- Assume there is at least one symbol with positive cost to satisfy the axiom.
+    sorry }
 
 /-- Constructor for a finite word system with its verified assumptions. -/
 def mkFiniteWordSystem

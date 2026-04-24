@@ -69,6 +69,10 @@ structure Assumptions (S : System) : Prop where
         ξ₂ ∈ Fiber S R₂ ∧
         ξ₁ ∈ Fiber S R₁
 
+  /-- Every hidden trace has a non-negative cost. -/
+  cost_nonneg :
+    ∀ (ξ : S.Hid.G), 0 ≤ S.Hid.cost ξ
+
   /--
   Structural Independence (Section 8):
   The spend functional and the defect allowance are structurally independent.

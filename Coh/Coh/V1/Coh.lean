@@ -49,7 +49,7 @@ structure Trace (X : Type) where
   steps : List (Step X)
   chain : is_chain src dst steps
 
-@[ext, simp]
+@[ext]
 theorem Trace.ext {X : Type} (t1 t2 : Trace X)
     (h_src : t1.src = t2.src) (h_dst : t1.dst = t2.dst) (h_steps : t1.steps = t2.steps) :
     t1 = t2 := by
@@ -87,11 +87,9 @@ def traceDefect {X : Type} (t : Trace X) : ℚ :=
   stepsDefect t.steps
 
 /-- Link between traceSpend and stepsSpend. -/
--- Placeholder - definitional equality requires restructuring
 theorem traceSpend_eq_stepsSpend {X : Type} (t : Trace X) :
     traceSpend t = stepsSpend t.steps := rfl
 
--- Similar issue with traceDefect
 theorem traceDefect_eq_stepsDefect {X : Type} (t : Trace X) :
     traceDefect t = stepsDefect t.steps := rfl
 
@@ -174,11 +172,19 @@ theorem concat_assoc {X : Type} [DecidableEq X] (t₁ t₂ t₃ : Trace X) (t₁
 
 theorem concat_id_right {X : Type} [DecidableEq X] (t : Trace X) :
     concat t (emptyTrace t.dst) = some t := by
-  simp [concat, emptyTrace, Trace.ext]
+  unfold concat
+  split; case isFalse => contradiction
+  case isTrue =>
+    congr 1
+    apply Trace.ext <;> simp
 
 theorem concat_id_left {X : Type} [DecidableEq X] (t : Trace X) :
     concat (emptyTrace t.src) t = some t := by
-  simp [concat, emptyTrace, Trace.ext]
+  unfold concat
+  split; case isFalse => contradiction
+  case isTrue =>
+    congr 1
+    apply Trace.ext <;> simp
 
 theorem concat_empty_left {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
     (h_id : t₁₂ = emptyTrace t₁.src) (h : concat t₁ t₂ = some t₁₂) :
@@ -209,7 +215,29 @@ theorem concat_empty_right {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace
 theorem concat_id_id {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
     (h1 : t₁ = emptyTrace t₁.src) (h2 : t₂ = emptyTrace t₂.src) (h : concat t₁ t₂ = some t₁₂) :
     t₁₂ = emptyTrace t₁.src := by
-  sorry
+  unfold concat at h
+  split at h; case isFalse => contradiction
+  case isTrue h_dst =>
+    injection h with h_eq
+    subst h_eq
+    apply Trace.ext
+    · rfl
+    · rcases t₁ with ⟨s1, d1, st1, c1⟩
+      rcases t₂ with ⟨s2, d2, st2, c2⟩
+      unfold emptyTrace at h1 h2
+      simp at h1 h2
+      rcases h1 with ⟨rfl, rfl, rfl⟩
+      rcases h2 with ⟨rfl, rfl, rfl⟩
+      simp at h_dst
+      subst h_dst
+      rfl
+    · rcases t₁ with ⟨s1, d1, st1, c1⟩
+      rcases t₂ with ⟨s2, d2, st2, c2⟩
+      unfold emptyTrace at h1 h2
+      simp at h1 h2
+      rcases h1 with ⟨rfl, rfl, rfl⟩
+      rcases h2 with ⟨rfl, rfl, rfl⟩
+      simp [emptyTrace]
 
 theorem rv_id (X : Type) (x : X) : RVAccept X (emptyTrace x) := by
   simp [RVAccept, emptyTrace]
@@ -222,8 +250,9 @@ theorem rv_comp (X : Type) [DecidableEq X] (t₁ t₂ t₁₂ : Trace X)
   case isTrue h_dst =>
     injection h with h_eq
     subst h_eq
-    simp [RVAccept]
+    unfold RVAccept
     intro h1 h2 s hs
+    simp at hs
     cases hs
     case inl h_in => exact h1 s h_in
     case inr h_in => exact h2 s h_in

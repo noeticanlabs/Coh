@@ -41,9 +41,7 @@ theorem CertifiedMor.ext {S : System} {A : Assumptions S} {X : Type v} {V : X �
     f = g := by
   cases f
   cases g
-  cases htrace
-  cases hspend
-  cases hdefect
+  subst htrace hspend hdefect
   rfl
 
 /-- Identity certified morphism. -/
@@ -56,7 +54,7 @@ def idMor {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ) (x : X) 
   defect_nonneg := le_rfl
   law := by simp only [add_zero, le_refl]
   defect_bound := by
-    simpa [delta_id A]
+    simp only [delta_id A, le_refl]
 
 /-- Composition of certified morphisms. -/
 def compose {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
@@ -79,7 +77,48 @@ def compose {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
     have hδ : delta S R₂₁ ≤ delta S g.trace + delta S f.trace :=
       delta_subadd A hcomp
     have hb : delta S g.trace + delta S f.trace ≤ f.defect + g.defect := by
-      simpa [add_comm, add_left_comm, add_assoc] using add_le_add g.defect_bound f.defect_bound
+      linarith [f.defect_bound, g.defect_bound]
     exact hδ.trans hb
+
+theorem assoc_certified {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
+    {w x y z : X}
+    (f : CertifiedMor S A V w x) (g : CertifiedMor S A V x y) (h : CertifiedMor S A V y z)
+    {R12 R23 R123a R123b : S.Obs.V}
+    (h12 : S.Obs.comp g.trace f.trace = some R12)
+    (h23 : S.Obs.comp h.trace g.trace = some R23)
+    (h123a : S.Obs.comp h.trace R12 = some R123a)
+    (h123b : S.Obs.comp R23 f.trace = some R123b) :
+    compose V (compose V f g h12) h h123a = compose V f (compose V g h h23) h123b := by
+  apply CertifiedMor.ext
+  · have h_eq := A.obs_assoc h12 h23 h123a
+    rw [h123b] at h_eq
+    injection h_eq with h_eq
+    exact h_eq.symm
+  · simp [compose, add_assoc]
+  · simp [compose, add_assoc]
+
+theorem id_right_certified {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
+    {x y : X} (f : CertifiedMor S A V x y)
+    {R : S.Obs.V} (h : S.Obs.comp f.trace S.Obs.id = some R) :
+    compose V (idMor V x) f h = f := by
+  apply CertifiedMor.ext
+  · have h_id := A.obs_id_right f.trace
+    rw [h] at h_id
+    injection h_id with h_id
+    exact h_id
+  · simp [compose, idMor]
+  · simp [compose, idMor]
+
+theorem id_left_certified {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
+    {x y : X} (f : CertifiedMor S A V x y)
+    {R : S.Obs.V} (h : S.Obs.comp S.Obs.id f.trace = some R) :
+    compose V f (idMor V y) h = f := by
+  apply CertifiedMor.ext
+  · have h_id := A.obs_id_left f.trace
+    rw [h] at h_id
+    injection h_id with h_id
+    exact h_id
+  · simp [compose, idMor]
+  · simp [compose, idMor]
 
 end Coh.V2
