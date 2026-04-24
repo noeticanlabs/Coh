@@ -38,4 +38,16 @@ structure System where
   /-- Projection from hidden traces to observable traces. -/
   proj : Hid.G → Obs.V
 
+/-- 
+A trace-indexed realization that is explicitly segmentable. 
+This structure allows hidden witnesses to be built from atomic components 
+or by composing existing witnesses, mirroring the observable trace structure.
+-/
+inductive CompositeWitness (Obs : ObservableSystem) (Hid_atomic : HiddenSystem) (proj_atomic : Hid_atomic.G → Obs.V) : Obs.V → Type u where
+  | atomic : ∀ (ξ : Hid_atomic.G), CompositeWitness Obs Hid_atomic proj_atomic (proj_atomic ξ)
+  | compose : ∀ {R₁ R₂ R₂₁} (ξ₂ : CompositeWitness Obs Hid_atomic proj_atomic R₂) (ξ₁ : CompositeWitness Obs Hid_atomic proj_atomic R₁),
+              Obs.comp R₂ R₁ = some R₂₁ →
+              CompositeWitness Obs Hid_atomic proj_atomic R₂₁
+
 end Coh.V2
+

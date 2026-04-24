@@ -56,19 +56,6 @@ structure Assumptions (S : System) : Prop where
       S.Hid.comp ξ₂ ξ₁ = some ξ →
       S.Hid.cost ξ = S.Hid.cost ξ₂ + S.Hid.cost ξ₁
 
-  /--
-  Every hidden witness of a composite observable trace decomposes into
-  corresponding hidden witnesses of the component traces.
-  -/
-  fiber_decomp :
-    ∀ {R₁ R₂ R₂₁ : S.Obs.V} {ξ : S.Hid.G},
-      S.Obs.comp R₂ R₁ = some R₂₁ →
-      ξ ∈ Fiber S R₂₁ →
-      ∃ ξ₂ ξ₁,
-        S.Hid.comp ξ₂ ξ₁ = some ξ ∧
-        ξ₂ ∈ Fiber S R₂ ∧
-        ξ₁ ∈ Fiber S R₁
-
   /-- Every hidden trace has a non-negative cost. -/
   cost_nonneg :
     ∀ (ξ : S.Hid.G), 0 ≤ S.Hid.cost ξ
@@ -86,4 +73,12 @@ structure VerifiedSystem where
   sys : System
   asm : Assumptions sys
 
+/-- Extended structure for systems that are explicitly segmentable. -/
+structure SegmentableAssumptions (S : System) extends Assumptions S, Segmentable S
+
+structure VerifiedSegmentableSystem where
+  sys : System
+  asm : SegmentableAssumptions sys
+
 end Coh.V2
+
