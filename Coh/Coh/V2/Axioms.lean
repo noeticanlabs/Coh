@@ -69,6 +69,14 @@ structure Assumptions (S : System) : Prop where
         ξ₂ ∈ Fiber S R₂ ∧
         ξ₁ ∈ Fiber S R₁
 
+  /--
+  Structural Independence (Section 8):
+  The spend functional and the defect allowance are structurally independent.
+  Ensures that the thermodynamic penalty cannot be trivially zeroed out.
+  -/
+  structural_independence :
+    ∃ (R : S.Obs.V), delta S R > 0
+
 /-- Structure to package a system and its verified assumptions. -/
 structure VerifiedSystem where
   sys : System

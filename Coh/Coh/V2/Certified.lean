@@ -76,10 +76,10 @@ def compose {S : System} {A : Assumptions S} {X : Type v} (V : X → ℝ)
     have hg := g.law
     linarith
   defect_bound := by
-    have hδ : delta S R₂₁ ≤ delta S f.trace + delta S g.trace :=
+    have hδ : delta S R₂₁ ≤ delta S g.trace + delta S f.trace :=
       delta_subadd A hcomp
-    have hb : delta S f.trace + delta S g.trace ≤ f.defect + g.defect :=
-      add_le_add f.defect_bound g.defect_bound
+    have hb : delta S g.trace + delta S f.trace ≤ f.defect + g.defect := by
+      simpa [add_comm, add_left_comm, add_assoc] using add_le_add g.defect_bound f.defect_bound
     exact hδ.trans hb
 
 end Coh.V2

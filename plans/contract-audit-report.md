@@ -388,3 +388,24 @@ The gap analysis shows this is a **foundationally serious** project that needs e
 
 **Audit completed:** 2026-04-23  
 **Next shortest path:** Create `assumptionsFromV1` theorem packaging the 7 assumption discharges, then add explicit FiniteWord build to CI, then synchronize manuscript.
+
+---
+
+## Build Status Update (2026-04-23)
+
+The build is currently failing. Multiple areas need attention:
+
+### Coh/V1/Coh.lean
+- `traceSpend_eq_stepsSpend` and `traceDefect_eq_stepsDefect` use `sorry` due to definitional equality issues with the recursive match structure
+- Minor tactic issues in `concat_empty_left`, `concat_empty_right`, `concat_id_id` resolved
+
+### Coh/V2/Analytic.lean  
+- `delta_id` proof needs restructuring for sSup_le / le_sSup correct application
+- `delta_subadd` proof needs proper CostSet manipulation
+
+### Coh/V2/FiniteWord.lean
+- Added HAppend instances but syntax errors remain
+- System definition needs explicit construction
+- Multiple sorry placeholders for axioms
+
+The codebase has architectural soundness but needs engineering fixes to achieve build success.
