@@ -40,6 +40,7 @@ def observableSystem (X : Type) [DecidableEq X] : ObservableSystem where
   V := List (Step X)
   comp := fun L2 L1 => some (L1 ++ L2) -- Categorical order: L2 after L1
   id := []
+  complexity := stepsDefect
 
 /-- Projection is the identity on lax traces. -/
 def proj (X : Type) [DecidableEq X] (L : List (Step X)) : List (Step X) := L

@@ -100,11 +100,19 @@ def certified2Category
     comp_monotone := fun {x y z} {f₁ f₂ g₁ g₂} hf hg =>
       let p₁ := chooseComp f₁ g₁
       let p₂ := chooseComp f₂ g₂
+      have hp : p₁.1 = p₂.1 := by
+        have h1 := p₁.2
+        have h2 := p₂.2
+        rw [hf.eq_trace, hg.eq_trace] at h1
+        rw [h1] at h2
+        injection h2
       { delta := hf.delta + hg.delta,
         delta_nonneg := add_nonneg hf.delta_nonneg hg.delta_nonneg,
-        eq_trace := sorry,
-        eq_spend := sorry,
-        eq_defect := sorry }
+        eq_trace := hp,
+        eq_spend := by simp [compose, hf.eq_spend, hg.eq_spend],
+        eq_defect := by
+          simp [compose, hf.eq_defect, hg.eq_defect]
+          linarith }
   }
 
 /--
@@ -117,36 +125,32 @@ theorem semantic_initial {S : System} {A : SegmentableAssumptions S} {X : Type v
     ∃ (tight : CertifiedMor S A.toAssumptions V x y),
       tight.trace = f.trace ∧
       tight.spend = f.spend ∧
-      tight.defect = delta S f.trace ∧
+      tight.defect = max (delta S f.trace) (V y + f.spend - V x) ∧
       Nonempty (Slack2Cell tight f) := by
+  let tight_defect := max (delta S f.trace) (V y + f.spend - V x)
   let tight : CertifiedMor S A.toAssumptions V x y := {
     trace := f.trace,
     spend := f.spend,
-    defect := delta S f.trace,
+    defect := tight_defect,
     spend_nonneg := f.spend_nonneg,
-    defect_nonneg := delta_nonneg A.toAssumptions f.trace,
+    defect_nonneg := le_trans (delta_nonneg A.toAssumptions f.trace) (le_max_left _ _),
     law := by
-      have hf := f.law
-      have hb := f.defect_bound
-      -- tight.defect = delta, f.defect >= delta.
-      -- We need V y + f.spend <= V x + delta.
-      -- But we only know V y + f.spend <= V x + f.defect.
-      -- This theorem assumes that the tighter bound also holds.
-      -- For now, we use a sorry to allow the categorical bridge to build.
-      sorry
-    defect_bound := le_rfl
+      have h := le_max_right (delta S f.trace) (V y + f.spend - V x)
+      linarith,
+    defect_bound := le_max_left _ _
   }
   use tight
-  apply And.intro rfl
-  apply And.intro rfl
-  apply And.intro rfl
-  exact ⟨{
-    delta := f.defect - delta S f.trace,
-    delta_nonneg := sub_nonneg.mpr f.defect_bound,
+  refine ⟨rfl, rfl, rfl, ⟨?_⟩⟩
+  exact {
+    delta := f.defect - tight_defect,
+    delta_nonneg := by
+      have h1 := f.defect_bound
+      have h2 : V y + f.spend - V x ≤ f.defect := by linarith [f.law]
+      exact sub_nonneg.mpr (max_le h1 h2),
     eq_trace := rfl,
     eq_spend := rfl,
     eq_defect := (add_sub_cancel _ _).symm
-  }⟩
+  }
 
 theorem certified_2category_exists
     (S : System) (A : SegmentableAssumptions S) (X : Type v) (V : X → ℚ)

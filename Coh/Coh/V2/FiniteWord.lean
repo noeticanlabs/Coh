@@ -77,7 +77,7 @@ def hiddenSystem (A B : Type) (c_B : B → ℚ) : HiddenSystem where
   G := HiddenG A B; comp := hComp; cost := hiddenCost A B c_B
 
 def observableSystem (A : Type) : ObservableSystem where
-  V := ObservableV A; comp := oComp; id := obsId
+  V := ObservableV A; comp := oComp; id := obsId; complexity := fun _ => 0
 
 def system (A B : Type) (c_B : B → ℚ) : System where
   Hid := hiddenSystem A B c_B

@@ -28,6 +28,8 @@ structure ObservableSystem where
   comp : V → V → Option V
   /-- The identity (null) observable trace. -/
   id : V
+  /-- Complexity (algorithmic weight) of an observable trace. -/
+  complexity : V → ℚ
 
 /-- Full Coh V2 system: hidden layer, observable layer, and projection. -/
 structure System where
