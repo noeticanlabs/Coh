@@ -1,4 +1,7 @@
-import Mathlib.Data.Real.Basic
+import Mathlib.Data.Rat.Lemmas
+import Mathlib.Algebra.Order.Field.Rat
+import Mathlib.Algebra.Order.Ring.Defs
+import Mathlib.Algebra.Order.Group.Basic
 import Mathlib.Data.List.Basic
 import Mathlib.Tactic.Basic
 
@@ -49,6 +52,12 @@ structure Trace (X : Type) where
   steps : List (Step X)
   chain : is_chain src dst steps
 
+def emptyTrace {X : Type} (x : X) : Trace X :=
+{ src   := x,
+  dst   := x,
+  steps := List.nil,
+  chain := rfl }
+
 @[ext]
 theorem Trace.ext {X : Type} (t1 t2 : Trace X)
     (h_src : t1.src = t2.src) (h_dst : t1.dst = t2.dst) (h_steps : t1.steps = t2.steps) :
@@ -82,7 +91,7 @@ theorem stepsSpend_nonneg {X : Type} (ss : List (Step X)) : 0 ≤ stepsSpend ss 
   case nil => simp [stepsSpend]
   case cons s ss ih =>
     simp [stepsSpend]
-    exact le_add_of_nonneg_left (step_costSpend_nonneg s)
+    exact add_nonneg (step_costSpend_nonneg s) ih
 
 /-- Sum of non-negative defects is non-negative. -/
 theorem stepsDefect_nonneg {X : Type} (ss : List (Step X)) : 0 ≤ stepsDefect ss := by
@@ -90,10 +99,10 @@ theorem stepsDefect_nonneg {X : Type} (ss : List (Step X)) : 0 ≤ stepsDefect s
   case nil => simp [stepsDefect]
   case cons s ss ih =>
     simp [stepsDefect]
-    exact le_add_of_nonneg_left (step_costDefect_nonneg s)
+    exact add_nonneg (step_costDefect_nonneg s) ih
 
 /-- Construct a trace with a single step given two distinct states. -/
-def mkSingletonTrace {X : Type} [DecidableEq X] (x y : X) (h : x ≠ y) (step : Step X) (hstep : step.src = x ∧ step.dst = y) : Trace X :=
+def mkSingletonTrace {X : Type} [DecidableEq X] (x y : X) (_h : x ≠ y) (step : Step X) (hstep : step.src = x ∧ step.dst = y) : Trace X :=
   if hxy : x = y then
     emptyTrace x
   else
@@ -102,13 +111,9 @@ def mkSingletonTrace {X : Type} [DecidableEq X] (x y : X) (h : x ≠ y) (step : 
       dst := y,
       steps := [step],
       chain := by
-        simp only [is_chain]
-        constructor
-        · simp only [hstep.1, hstep.2]
-        · simp only [is_chain]
+        simp [is_chain]
+        exact ⟨hstep.1.symm, hstep.2⟩
     }
-
-end Coh.V1
 
 theorem stepsSpend_append {X : Type} (as bs : List (Step X)) :
     stepsSpend (as ++ bs) = stepsSpend as + stepsSpend bs := by
@@ -139,12 +144,6 @@ theorem traceDefect_eq_stepsDefect {X : Type} (t : Trace X) :
 
 def RVAccept (X : Type) (t : Trace X) : Prop :=
   ∀ s ∈ t.steps, s.typed
-
-def emptyTrace {X : Type} (x : X) : Trace X :=
-{ src   := x,
-  dst   := x,
-  steps := List.nil,
-  chain := rfl }
 
 /-- Lemma: is_chain is compositional under list concatenation. -/
 theorem is_chain_concat {X : Type} (s m e : X) (t1 t2 : List (Step X)) :
@@ -220,15 +219,14 @@ theorem concat_id_right {X : Type} [DecidableEq X] (t : Trace X) :
   split; case isFalse => contradiction
   case isTrue =>
     congr 1
-    apply Trace.ext <;> simp
+    apply Trace.ext <;> simp [emptyTrace]
 
 theorem concat_id_left {X : Type} [DecidableEq X] (t : Trace X) :
     concat (emptyTrace t.src) t = some t := by
   unfold concat
   split; case isFalse => contradiction
   case isTrue =>
-    congr 1
-    apply Trace.ext <;> simp
+    rfl
 
 theorem concat_empty_left {X : Type} [DecidableEq X] {t₁ t₂ t₁₂ : Trace X}
     (h_id : t₁₂ = emptyTrace t₁.src) (h : concat t₁ t₂ = some t₁₂) :

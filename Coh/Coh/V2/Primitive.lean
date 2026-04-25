@@ -1,4 +1,4 @@
-import Mathlib.Data.Real.Basic
+import Mathlib.Data.Rat.Lemmas
 
 /-!
 ## Coh V2 Primitive Structures
@@ -17,8 +17,8 @@ structure HiddenSystem where
   G : Type u
   /-- Partial composition of hidden traces. -/
   comp : G → G → Option G
-  /-- Exact cost of a hidden trace in `ℝ`. -/
-  cost : G → ℝ
+  /-- Exact cost of a hidden trace in `ℚ`. -/
+  cost : G → ℚ
 
 /-- Observable traces with partial composition and observable identity. -/
 structure ObservableSystem where
@@ -38,9 +38,9 @@ structure System where
   /-- Projection from hidden traces to observable traces. -/
   proj : Hid.G → Obs.V
 
-/-- 
-A trace-indexed realization that is explicitly segmentable. 
-This structure allows hidden witnesses to be built from atomic components 
+/--
+A trace-indexed realization that is explicitly segmentable.
+This structure allows hidden witnesses to be built from atomic components
 or by composing existing witnesses, mirroring the observable trace structure.
 -/
 inductive CompositeWitness (Obs : ObservableSystem) (Hid_atomic : HiddenSystem) (proj_atomic : Hid_atomic.G → Obs.V) : Obs.V → Type u where
@@ -50,4 +50,3 @@ inductive CompositeWitness (Obs : ObservableSystem) (Hid_atomic : HiddenSystem) 
               CompositeWitness Obs Hid_atomic proj_atomic R₂₁
 
 end Coh.V2
-
