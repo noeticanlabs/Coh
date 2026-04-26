@@ -33,13 +33,15 @@ def Glyph.compiles (g : Glyph) : Prop :=
   g.wf_surface ∧ g.wf_token
 
 structure Step (X : Type) where
-  src         : X
-  dst         : X
-  glyph       : Glyph
-  costSpend   : ℚ
-  costDefect  : ℚ
-  typed       : Prop
-  compiles_ok : Glyph.compiles glyph
+  src           : X
+  dst           : X
+  glyph         : Glyph
+  costSpend     : ℚ
+  costDefect    : ℚ
+  spend_nonneg  : 0 ≤ costSpend
+  defect_nonneg : 0 ≤ costDefect
+  typed         : Prop
+  compiles_ok   : Glyph.compiles glyph
 
 /-- Recursive predicate for a valid transition chain. -/
 def is_chain {X : Type} : X → X → List (Step X) → Prop
@@ -76,14 +78,13 @@ def stepsDefect {X : Type} : List (Step X) → ℚ
 | s :: ss => s.costDefect + stepsDefect ss
 
 /-- All step costs are non-negative. This is a V1 assumption for V2 compatibility. -/
-@[simp]
-theorem step_costSpend_nonneg {X : Type} (s : Step X) : 0 ≤ s.costSpend := by
-  sorry
+theorem step_costSpend_nonneg {X : Type} (s : Step X) : 0 ≤ s.costSpend :=
+  s.spend_nonneg
 
 /-- All step defects are non-negative. This is a V1 assumption for V2 compatibility. -/
 @[simp]
-theorem step_costDefect_nonneg {X : Type} (s : Step X) : 0 ≤ s.costDefect := by
-  sorry
+theorem step_costDefect_nonneg {X : Type} (s : Step X) : 0 ≤ s.costDefect :=
+  s.defect_nonneg
 
 /-- Sum of non-negative costs is non-negative. -/
 theorem stepsSpend_nonneg {X : Type} (ss : List (Step X)) : 0 ≤ stepsSpend ss := by

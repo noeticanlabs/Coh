@@ -6,6 +6,7 @@ import Mathlib.Algebra.Order.Field.Rat
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Finset.Max
 import Mathlib.Tactic.Linarith
+import Mathlib.Data.Real.Basic
 
 /-!
 ## Coh V2 Finite-Word Model
@@ -83,25 +84,34 @@ def system (A B : Type) (c_B : B → ℚ) : System where
   Hid := hiddenSystem A B c_B
   Obs := observableSystem A
   proj := @proj A B
+  proj_comp := by
+    intros ξ₂ ξ₁ ξ h
+    have h_hcomp : hComp ξ₂ ξ₁ = some ξ := h
+    simp [hComp] at h_hcomp
+    injection h_hcomp with h_eq
+    subst h_eq
+    simp [proj, observableSystem, oComp, List.map_append]
 
 /-- Typeclass requiring at least one positive-cost hidden symbol. -/
 class HasPositiveCost (B : Type) [Fintype B] (c_B : B → ℚ) : Prop where
   exists_pos : ∃ b : B, c_B b > 0
 
+/-- Typeclass requiring that all hidden symbols have non-negative cost. -/
+class HasNonnegativeCost (B : Type) (c_B : B → ℚ) : Prop where
+  nonneg : ∀ b, 0 ≤ c_B b
+
 /-- Assumptions implementation for FiniteWord. -/
 def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
-    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] : Assumptions (system A B c_B) :=
+    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] : Assumptions (system A B c_B) :=
 { obs_assoc := by
     intros R1 R2 R3 R12 R23 R123 h12 h23 h123a
-    unfold system observableSystem oComp at *
+    simp [system, observableSystem, oComp] at h12 h23 h123a
     cases h12; cases h23; cases h123a
-    simp [List.append_assoc]
-  obs_id_right := by
-    intros R
-    unfold system observableSystem oComp obsId; simp
-  obs_id_left := by
-    intros R
-    unfold system observableSystem oComp obsId; simp
+    simp [system, observableSystem, oComp, List.append_assoc]
+  obs_id_right := fun R => by
+    simp [system, observableSystem, oComp, obsId]
+  obs_id_left := fun R => by
+    simp [system, observableSystem, oComp, obsId]
   fiber_nonempty := by
     intros R
     let b : B := Classical.choice (show Nonempty B from inferInstance)
@@ -116,95 +126,98 @@ def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableE
   fiber_bounded := by
     intros R
     use (R.length : ℚ) * c_max c_B
-    intros c hc
-    rcases hc with ⟨ξ, hξ, rfl⟩
+    intro q hq
+    rcases hq with ⟨ξ, hξ, rfl⟩
     have hproj : proj ξ = R := hξ
     have hlen : ξ.length = R.length := by rw [← proj_length ξ, hproj]
     have hcost := cost_bound c_B ξ
-    simpa [system, hiddenSystem, hlen] using hcost
+    simpa [hlen] using hcost
   id_fiber_zero := by
     intros ξ hξ
-    unfold system observableSystem obsId Fiber at hξ
-    simp at hξ
+    simp [Fiber] at hξ
     have hproj : proj ξ = [] := hξ
-    have hlen0 : (proj ξ).length = 0 := by
-      simpa [hproj]
     have hlen : ξ.length = 0 := by
-      simpa [proj_length ξ] using hlen0
+      simpa [proj_length ξ] using congrArg List.length hproj
     cases ξ with
-    | nil => simp [system, hiddenSystem, hiddenCost]
+    | nil => rfl
     | cons hd tl => cases hlen
   hidden_cost_add := by
     intros ξ₂ ξ₁ ξ h
-    unfold system hiddenSystem hComp at h
+    simp [system, hiddenSystem, hComp] at h
     cases h
+    change (system A B c_B).Hid.cost (List.append ξ₂ ξ₁) = (system A B c_B).Hid.cost ξ₂ + (system A B c_B).Hid.cost ξ₁
     simp [system, hiddenSystem, hiddenCost, List.map_append, List.sum_append]
   cost_nonneg := by
     intros ξ
-    change 0 ≤ hiddenCost A B c_B ξ
-    unfold hiddenCost
-    sorry
+    induction ξ with
+    | nil => rfl
+    | cons p rest ih =>
+      show (system A B c_B).Hid.cost (p :: rest) ≥ 0
+      change hiddenCost A B c_B (p :: rest) ≥ 0
+      simp [hiddenCost]
+      exact add_nonneg (hn.nonneg p.2) ih
   structural_independence := by
     rcases hp.exists_pos with ⟨b, hb⟩
     let a : A := Classical.choice (show Nonempty A from inferInstance)
     let R : ObservableV A := [a]
     let ξ : HiddenG A B := [(a, b)]
     have h_cost_pos : c_B b > 0 := hb
-    have h_in_set : c_B b ∈ CostSet (system A B c_B) R := by
-      refine ⟨ξ, ?_, ?_⟩
-      · change proj ξ = R
-        simp [proj, R, ξ]
-      · simp [system, hiddenSystem, hiddenCost, ξ]
-    have h_bdd : BddAbove (CostSet (system A B c_B) R) := by
-      refine ⟨(R.length : ℚ) * c_max c_B, ?_⟩
-      intro c hc
-      rcases hc with ⟨η, hη, rfl⟩
-      have hlen' : (proj η).length = R.length := by
-        exact congrArg List.length (show proj η = R from hη)
+    have h_in_set_real : (c_B b : ℝ) ∈ CostSetReal (system A B c_B) R := by
+      exists (c_B b)
+      constructor
+      · exists ξ
+        constructor
+        · exact rfl
+        · simp [system, hiddenSystem, hiddenCost, ξ]
+      · exact rfl
+    have h_bdd : BddAbove (CostSetReal (system A B c_B) R) := by
+      use ((R.length : ℚ) * c_max c_B : ℝ)
+      intro r hr
+      rcases hr with ⟨q, hq, rfl⟩
+      rcases hq with ⟨η, hη, rfl⟩
       have hlen : η.length = R.length := by
+        have hlen' := congrArg List.length (show proj η = R from hη)
         simpa [proj_length η] using hlen'
       have hcost := cost_bound c_B η
-      simpa [system, hiddenSystem, hlen] using hcost
-    have h_ge : c_B b ≤ delta (system A B c_B) R := by
-      unfold delta
-      exact rat_le_csSup h_bdd h_in_set
-    exact ⟨R, lt_of_lt_of_le h_cost_pos h_ge⟩ }
+      exact_mod_cast (by simpa [hlen] using hcost)
+    exact ⟨R, lt_of_lt_of_le (show (0 : ℝ) < c_B b by exact_mod_cast h_cost_pos) (real_le_csSup h_bdd h_in_set_real)⟩
+  comp_reachable := fun {R1 R2 R3 Ra Rb} _ _ => ⟨List.append Rb Ra, rfl⟩ }
 
 /-- FiniteWord systems are segmentable. -/
 def segmentable (A B : Type) (c_B : B → ℚ) : Segmentable (system A B c_B) where
   fiber_decomp := by
     intros R₁ R₂ R₂₁ ξ hc hξ
-    unfold system observableSystem oComp at hc
+    simp [system, observableSystem, oComp] at hc
     cases hc
-    unfold system Fiber at hξ
-    simp at hξ
+    simp [Fiber] at hξ
+    have hproj : proj ξ = List.append R₂ R₁ := hξ
     let n := R₂.length
     use ξ.take n, ξ.drop n
     constructor
-    · unfold system hiddenSystem hComp; simp
+    · simp [system, hiddenSystem, hComp, List.take_append_drop]
     · constructor
       · show proj (ξ.take n) = R₂
         have htake : List.take n (proj ξ) = List.take n (List.append R₂ R₁) := by
-          simpa [hξ]
+          rw [hproj]
         rw [show proj (ξ.take n) = List.take n (proj ξ) by simp [proj]]
         rw [htake]
         simp [n]
       · show proj (ξ.drop n) = R₁
         have hdrop : List.drop n (proj ξ) = List.drop n (List.append R₂ R₁) := by
-          simpa [hξ]
+          rw [hproj]
         rw [show proj (ξ.drop n) = List.drop n (proj ξ) by simp [proj]]
         rw [hdrop]
         simp [n]
 
 def segmentableAssumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
-    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] : SegmentableAssumptions (system A B c_B) :=
+    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] : SegmentableAssumptions (system A B c_B) :=
 { toAssumptions := assumptions A B c_B
   toSegmentable := segmentable A B c_B }
 
 /-- Constructor for a finite word system with its verified assumptions. -/
 def mkFiniteWordSystem
     (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
-    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [HasPositiveCost B c_B] : VerifiedSystem :=
+    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] : VerifiedSystem :=
   ⟨system A B c_B, assumptions A B c_B⟩
 
 end Coh.V2.FiniteWord

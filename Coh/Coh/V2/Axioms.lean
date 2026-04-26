@@ -68,6 +68,17 @@ structure Assumptions (S : System) : Prop where
   structural_independence :
     ∃ (R : S.Obs.V), delta S R > 0
 
+  /--
+  Compositional Reachability:
+  If an observable R2 is reachable from R1, and R3 from R2, then R3 is reachable from R1.
+  This ensures that distance composition is well-defined.
+  -/
+  comp_reachable :
+    ∀ {R₁ R₂ R₃ Ra Rb},
+      S.Obs.comp Ra R₁ = some R₂ →
+      S.Obs.comp Rb R₂ = some R₃ →
+      ∃ Rc, S.Obs.comp Rb Ra = some Rc
+
 /-- Structure to package a system and its verified assumptions. -/
 structure VerifiedSystem where
   sys : System
@@ -81,4 +92,3 @@ structure VerifiedSegmentableSystem where
   asm : SegmentableAssumptions sys
 
 end Coh.V2
-

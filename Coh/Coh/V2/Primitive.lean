@@ -13,42 +13,34 @@ universe u
 
 /-- Hidden realizations with partial composition and exact hidden cost. -/
 structure HiddenSystem where
-  /-- The set of hidden execution traces. -/
   G : Type u
-  /-- Partial composition of hidden traces. -/
   comp : G → G → Option G
-  /-- Exact cost of a hidden trace in `ℚ`. -/
   cost : G → ℚ
 
 /-- Observable traces with partial composition and observable identity. -/
 structure ObservableSystem where
-  /-- The set of observable traces. -/
   V : Type u
-  /-- Partial composition of observable traces. -/
   comp : V → V → Option V
-  /-- The identity (null) observable trace. -/
   id : V
-  /-- Complexity (algorithmic weight) of an observable trace. -/
   complexity : V → ℚ
 
 /-- Full Coh V2 system: hidden layer, observable layer, and projection. -/
 structure System where
-  /-- The hidden system layer. -/
   Hid : HiddenSystem
-  /-- The observable system layer. -/
   Obs : ObservableSystem
-  /-- Projection from hidden traces to observable traces. -/
   proj : Hid.G → Obs.V
+  proj_comp :
+    ∀ ξ₂ ξ₁ ξ,
+      Hid.comp ξ₂ ξ₁ = some ξ →
+      proj ξ = Obs.comp (proj ξ₂) (proj ξ₁)
 
 /--
-A trace-indexed realization that is explicitly segmentable.
-This structure allows hidden witnesses to be built from atomic components
-or by composing existing witnesses, mirroring the observable trace structure.
+Inductive structure for explicitly building composite witnesses.
+Decomposition of a CompositeWitness is definitional (inversion of constructor).
 -/
-inductive CompositeWitness (Obs : ObservableSystem) (Hid_atomic : HiddenSystem) (proj_atomic : Hid_atomic.G → Obs.V) : Obs.V → Type u where
-  | atomic : ∀ (ξ : Hid_atomic.G), CompositeWitness Obs Hid_atomic proj_atomic (proj_atomic ξ)
-  | compose : ∀ {R₁ R₂ R₂₁} (ξ₂ : CompositeWitness Obs Hid_atomic proj_atomic R₂) (ξ₁ : CompositeWitness Obs Hid_atomic proj_atomic R₁),
-              Obs.comp R₂ R₁ = some R₂₁ →
-              CompositeWitness Obs Hid_atomic proj_atomic R₂₁
+inductive CompositeWitness (S : System) : S.Obs.V → Type u
+| atomic : ∀ (ξ : S.Hid.G), CompositeWitness S (S.proj ξ)
+| compose : ∀ {R₁ R₂ R₂₁}, S.Obs.comp R₂ R₁ = some R₂₁ →
+    CompositeWitness S R₂ → CompositeWitness S R₁ → CompositeWitness S R₂₁
 
 end Coh.V2
