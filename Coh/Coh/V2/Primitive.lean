@@ -3,8 +3,7 @@ import Mathlib.Data.Rat.Lemmas
 /-!
 ## Coh V2 Primitive Structures
 
-This module defines the core structures for the Coh V2 framework,
-separating hidden execution layers from observable trace layers.
+This module defines the core structures for the Coh V2 framework.
 -/
 
 namespace Coh.V2
@@ -32,11 +31,10 @@ structure System where
   proj_comp :
     ∀ ξ₂ ξ₁ ξ,
       Hid.comp ξ₂ ξ₁ = some ξ →
-      proj ξ = Obs.comp (proj ξ₂) (proj ξ₁)
+      Obs.comp (proj ξ₂) (proj ξ₁) = some (proj ξ)
 
 /--
 Inductive structure for explicitly building composite witnesses.
-Decomposition of a CompositeWitness is definitional (inversion of constructor).
 -/
 inductive CompositeWitness (S : System) : S.Obs.V → Type u
 | atomic : ∀ (ξ : S.Hid.G), CompositeWitness S (S.proj ξ)

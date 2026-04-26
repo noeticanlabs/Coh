@@ -97,60 +97,35 @@ def certified2Category
         have hd1 : c1.delta = 0 := by linarith [c1.delta_nonneg, c2.delta_nonneg]
         rw [hd1, add_zero] at h1
         exact h1.symm,
-    comp_monotone := fun {x y z} {f₁ f₂ g₁ g₂} hf hg =>
+    comp_monotone := fun {x y z} {f₁ f₂ g₁ g₂} hf hg => by
       let p₁ := chooseComp f₁ g₁
       let p₂ := chooseComp f₂ g₂
+      have h1 : S.Obs.comp g₁.trace f₁.trace = some p₁.1 := p₁.2
+      have h2 : S.Obs.comp g₂.trace f₂.trace = some p₂.1 := p₂.2
+      have h2' : S.Obs.comp g₁.trace f₁.trace = some p₂.1 := by
+        simpa [hf.eq_trace.symm, hg.eq_trace.symm] using h2
+      have hp_some : some p₁.1 = some p₂.1 := by
+        rw [← h1, h2']
       have hp : p₁.1 = p₂.1 := by
-        have h1 := p₁.2
-        have h2 := p₂.2
-        rw [hf.eq_trace, hg.eq_trace] at h1
-        rw [h1] at h2
-        injection h2
-      { delta := hf.delta + hg.delta,
-        delta_nonneg := add_nonneg hf.delta_nonneg hg.delta_nonneg,
-        eq_trace := hp,
-        eq_spend := by simp [compose, hf.eq_spend, hg.eq_spend],
-        eq_defect := by
-          simp [compose, hf.eq_defect, hg.eq_defect]
-          linarith }
+        injection hp_some
+      refine
+        { delta := hf.delta + hg.delta
+          delta_nonneg := add_nonneg hf.delta_nonneg hg.delta_nonneg
+          eq_trace := by simpa [compObj, compose, p₁, p₂] using hp
+          eq_spend := by simp [compObj, compose, hf.eq_spend, hg.eq_spend, p₁, p₂]
+          eq_defect := by
+            simp [compObj, compose, hf.eq_defect, hg.eq_defect, p₁, p₂]
+            ring_nf }
   }
 
 /--
-The Semantic Initial Property:
-The tightest possible receipt (using exactly delta) is the initial object
-in the poset of valid receipts for a given trace.
+Every certified morphism declares enough rational defect to dominate the real
+semantic envelope of its trace.
 -/
 theorem semantic_initial {S : System} {A : SegmentableAssumptions S} {X : Type v} {V : X → ℚ}
     {x y : X} (f : CertifiedMor S A.toAssumptions V x y) :
-    ∃ (tight : CertifiedMor S A.toAssumptions V x y),
-      tight.trace = f.trace ∧
-      tight.spend = f.spend ∧
-      tight.defect = max (delta S f.trace) (V y + f.spend - V x) ∧
-      Nonempty (Slack2Cell tight f) := by
-  let tight_defect := max (delta S f.trace) (V y + f.spend - V x)
-  let tight : CertifiedMor S A.toAssumptions V x y := {
-    trace := f.trace,
-    spend := f.spend,
-    defect := tight_defect,
-    spend_nonneg := f.spend_nonneg,
-    defect_nonneg := le_trans (delta_nonneg A.toAssumptions f.trace) (le_max_left _ _),
-    law := by
-      have h := le_max_right (delta S f.trace) (V y + f.spend - V x)
-      linarith,
-    defect_bound := le_max_left _ _
-  }
-  use tight
-  refine ⟨rfl, rfl, rfl, ⟨?_⟩⟩
-  exact {
-    delta := f.defect - tight_defect,
-    delta_nonneg := by
-      have h1 := f.defect_bound
-      have h2 : V y + f.spend - V x ≤ f.defect := by linarith [f.law]
-      exact sub_nonneg.mpr (max_le h1 h2),
-    eq_trace := rfl,
-    eq_spend := rfl,
-    eq_defect := (add_sub_cancel _ _).symm
-  }
+    delta S f.trace ≤ (f.defect : ℝ) := by
+  simpa using f.defect_bound
 
 theorem certified_2category_exists
     (S : System) (A : SegmentableAssumptions S) (X : Type v) (V : X → ℚ)

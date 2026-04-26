@@ -38,11 +38,10 @@ def system (X : Type) [DecidableEq X] : System where
   Hid := hiddenSystem X
   Obs := observableSystem X
   proj := stepsObs
-  proj_comp := by
-    intros ξ₂ ξ₁ ξ h
-    simp [hiddenSystem] at h
-    subst h
-    simp [stepsObs, List.map_append]
+  proj_comp := fun {ξ₂ ξ₁ ξ} h => by
+    dsimp only [hiddenSystem, observableSystem, stepsObs] at *
+    cases h
+    simp [List.map_append, List.append_assoc]
 
 /-- Class for types with bounded spend per step. -/
 class BoundedSpend (X : Type) where
@@ -53,88 +52,95 @@ class BoundedSpend (X : Type) where
 class HasPositiveSpend (X : Type) where
   positive_spend : ∀ x : X, ∃ step : Step X, step.src = x ∧ step.costSpend > 0
 
+private def bridgeGlyph : Glyph :=
+  { tag := GlyphTag.invoke
+    surface := ""
+    token := { opcode := "", arg := "" }
+    wf_surface := True
+    wf_token := True }
+
+private def zeroStep {X : Type} (x : X) : Step X :=
+  { src := x
+    dst := x
+    glyph := bridgeGlyph
+    costSpend := 0
+    costDefect := 0
+    spend_nonneg := by norm_num
+    defect_nonneg := by norm_num
+    typed := True
+    compiles_ok := by
+      simp [bridgeGlyph, Glyph.compiles] }
+
+private theorem stepsSpend_bound {X : Type} [BoundedSpend X] (ξ : List (Step X)) :
+    stepsSpend ξ ≤ (ξ.length : ℚ) * BoundedSpend.c_max X := by
+  induction ξ with
+  | nil => simp [stepsSpend]
+  | cons hd tl ih =>
+      have hmax : hd.costSpend ≤ BoundedSpend.c_max X := BoundedSpend.spend_le hd
+      have hsum : hd.costSpend + stepsSpend tl ≤
+          BoundedSpend.c_max X + (tl.length : ℚ) * BoundedSpend.c_max X :=
+        add_le_add hmax ih
+      simpa [stepsSpend, List.length, add_mul, add_comm, add_left_comm, add_assoc] using hsum
+
 /-- Verification of Assumptions for the V1->V2 bridge. -/
-def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [hp : HasPositiveSpend X] : Assumptions (system X) :=
-{ obs_assoc := by
-    intros R1 R2 R3 R12 R23 R123 h12 h23 h123
-    simp [system, observableSystem] at h12 h23 h123
+def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPositiveSpend X] : Assumptions (system X) where
+  obs_assoc := fun {R₁ R₂ R₃ R₁₂ R₂₃ R₁₂₃} h12 h23 h123 => by
+    dsimp only [system, observableSystem] at *
     cases h12; cases h23; cases h123
-    simp [List.append_assoc]
-  obs_id_right := fun R => by simp [system, observableSystem]
-  obs_id_left := fun R => by simp [system, observableSystem]
-  fiber_nonempty := by
-    intros R
-    use R.map (fun x => Step.mk x x (Glyph.mk GlyphTag.invoke "" (ControlToken.mk "" "") True.intro True.intro) 0 0 (by linarith) (by linarith) True.intro True.intro)
-    simp [Fiber, system, stepsObs, List.map_map, Function.comp, Step.src]
-  fiber_bounded := by
-    intros R
+    rw [List.append_assoc]
+  obs_id_right := fun R => by dsimp only [system, observableSystem]; rw [List.append_nil]
+  obs_id_left := fun R => by dsimp only [system, observableSystem]; rw [List.nil_append]
+  fiber_nonempty := fun R => by
+    refine ⟨R.map zeroStep, ?_⟩
+    change List.map Step.src (List.map zeroStep R) = R
+    induction R with
+    | nil => rfl
+    | cons hd tl ih => simp [zeroStep, ih]
+  fiber_bounded := fun R => by
     use (R.length : ℚ) * BoundedSpend.c_max X
     intro q hq
     rcases hq with ⟨ξ, hξ, rfl⟩
-    simp [Fiber, system, stepsObs] at hξ
+    have hlen' := congrArg List.length (show stepsObs ξ = R from hξ)
     have hlen : ξ.length = R.length := by
-      rw [← List.length_map Step.src ξ, hξ]
-    simp [hiddenSystem, stepsSpend]
-    induction ξ generalizing R
-    case nil => simp [stepsSpend]
-    case cons hd tl ih =>
-      simp [stepsSpend]
-      have hmax : hd.costSpend ≤ BoundedSpend.c_max X := BoundedSpend.spend_le hd
-      have htl : stepsSpend tl ≤ (tl.length : ℚ) * BoundedSpend.c_max X := by
-        apply ih
-        simp [stepsObs] at hξ
-        exact hξ.2
-      calc
-        hd.costSpend + stepsSpend tl ≤ BoundedSpend.c_max X + (tl.length : ℚ) * BoundedSpend.c_max X := add_le_add hmax htl
-        _ = (1 + (tl.length : ℚ)) * BoundedSpend.c_max X := by rw [add_comm, add_mul, one_mul]
-        _ = (hd :: tl : List (Step X)).length * BoundedSpend.c_max X := by simp [List.length]
-  id_fiber_zero := by
-    intros ξ hξ
-    simp [Fiber, system, stepsObs] at hξ
+      simpa [stepsObs, List.length_map] using hlen'
+    have hcost := stepsSpend_bound (X := X) ξ
+    simpa [system, hiddenSystem, hlen] using hcost
+  id_fiber_zero := fun ξ hξ => by
+    have hproj : stepsObs ξ = [] := hξ
+    have hlen : ξ.length = 0 := by
+      simpa [stepsObs, List.length_map] using congrArg List.length hproj
     cases ξ with
     | nil => rfl
-    | cons hd tl =>
-      have h : stepsObs (hd :: tl) = [] := hξ
-      simp [stepsObs] at h
-  hidden_cost_add := by
-    intros ξ₂ ξ₁ ξ h
-    simp [hiddenSystem] at h
+    | cons hd tl => cases hlen
+  hidden_cost_add := fun {ξ₂ ξ₁ ξ} h => by
+    simp [system, hiddenSystem] at h
     cases h
-    simp [hiddenSystem, stepsSpend_append]
+    simp [system, hiddenSystem, stepsSpend_append]
   cost_nonneg := fun ξ => stepsSpend_nonneg ξ
   structural_independence := by
-    let x := Classical.choice (show Nonempty X from inferInstance)
-    rcases hp.positive_spend x with ⟨step, hsrc, hpos⟩
+    let x : X := Classical.choice (show Nonempty X from inferInstance)
+    rcases HasPositiveSpend.positive_spend x with ⟨step, hsrc, hpos⟩
     let R : List X := [x]
-    use R
-    have h_in_q : step.costSpend ∈ CostSetQ (system X) R := by
-      exists [step]
-      constructor
-      · simp [Fiber, system, stepsObs, hsrc, R]
-      · simp [hiddenSystem, stepsSpend]
     have h_in_real : (step.costSpend : ℝ) ∈ CostSetReal (system X) R := by
-      exists step.costSpend
+      refine ⟨step.costSpend, ?_, rfl⟩
+      refine ⟨[step], ?_, by simp [system, hiddenSystem, stepsSpend]⟩
+      change List.map Step.src [step] = R
+      simp [R, hsrc]
     have h_bdd : BddAbove (CostSetReal (system X) R) := by
       use ((R.length : ℚ) * BoundedSpend.c_max X : ℝ)
       intro r hr
       rcases hr with ⟨q, hq, rfl⟩
-      rcases hq with ⟨ξ, hξ, rfl⟩
-      simp [Fiber, system, stepsObs] at hξ
-      have hlen : ξ.length = R.length := by rw [← List.length_map Step.src ξ, hξ]
-      have hcost : stepsSpend ξ ≤ (ξ.length : ℚ) * BoundedSpend.c_max X := by
-        induction ξ generalizing R
-        case nil => simp [stepsSpend]
-        case cons hd tl ih =>
-          simp [stepsSpend]
-          apply add_le_add (BoundedSpend.spend_le hd)
-          apply ih
-          simp [stepsObs] at hξ
-          exact hξ.2
-      exact_mod_cast hcost
-    have h_ge : (step.costSpend : ℝ) ≤ delta (system X) R := by
-      apply le_csSup h_bdd h_in_real
-    exact lt_of_lt_of_le (show (0 : ℝ) < (step.costSpend : ℝ) by exact_mod_cast hpos) h_ge
-  comp_reachable := fun {R1 R2 R3 Ra Rb} _ _ => ⟨Rb ++ Ra, rfl⟩ }
+      rcases hq with ⟨η, hη, rfl⟩
+      have hlen' := congrArg List.length (show stepsObs η = R from hη)
+      have hlen : η.length = R.length := by
+        simpa [stepsObs, List.length_map] using hlen'
+      have hcost := stepsSpend_bound (X := X) η
+      exact_mod_cast (by simpa [hlen] using hcost)
+    have hge : (step.costSpend : ℝ) ≤ delta (system X) R :=
+      real_le_csSup h_bdd h_in_real
+    refine ⟨R, lt_of_lt_of_le ?_ hge⟩
+    exact_mod_cast hpos
+  comp_reachable := fun {R₁ R₂ R₃ Ra Rb} _ _ => ⟨List.append Rb Ra, rfl⟩
 
 /-- The V1 trace model is segmentable. -/
 def segmentable (X : Type) [DecidableEq X] : Segmentable (system X) where
@@ -142,17 +148,24 @@ def segmentable (X : Type) [DecidableEq X] : Segmentable (system X) where
     intros R₁ R₂ R₂₁ ξ hc hξ
     simp [system, observableSystem] at hc
     cases hc
-    dsimp only [Fiber, system, stepsObs] at hξ ⊢
+    simp [Fiber, system, stepsObs] at hξ
+    have hproj : stepsObs ξ = List.append R₂ R₁ := hξ
     let n := R₂.length
     use ξ.take n, ξ.drop n
     constructor
-    · simp [hiddenSystem]
+    · simp [system, hiddenSystem, List.take_append_drop]
     · constructor
-      · dsimp only [Set.mem_setOf_eq] at hξ ⊢
-        rw [List.map_take, hξ, List.take_append]
+      · show stepsObs (ξ.take n) = R₂
+        have htake : List.take n (stepsObs ξ) = List.take n (List.append R₂ R₁) := by
+          rw [hproj]
+        rw [show stepsObs (ξ.take n) = List.take n (stepsObs ξ) by simp [stepsObs]]
+        rw [htake]
         simp [n]
-      · dsimp only [Set.mem_setOf_eq] at hξ ⊢
-        rw [List.map_drop, hξ, List.drop_append]
+      · show stepsObs (ξ.drop n) = R₁
+        have hdrop : List.drop n (stepsObs ξ) = List.drop n (List.append R₂ R₁) := by
+          rw [hproj]
+        rw [show stepsObs (ξ.drop n) = List.drop n (stepsObs ξ) by simp [stepsObs]]
+        rw [hdrop]
         simp [n]
 
 end Coh.V1
