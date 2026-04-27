@@ -6,17 +6,13 @@ import Mathlib.Algebra.Order.Field.Rat
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Finset.Max
 import Mathlib.Tactic.Linarith
-import Mathlib.Data.Real.Basic
 
 /-!
-## Coh V2 Finite-Word Model
+## Coh V2 Finite-Word Model (Rational Version)
 
 This module implements a concrete Coh V2 system based on finite alphabets
-and list-based traces. It provides hidden and observable layers where
-costs are additive over hidden symbols.
+and list-based traces using strictly rational defect envelopes.
 -/
-
-noncomputable section
 
 namespace Coh.V2.FiniteWord
 
@@ -74,13 +70,16 @@ def oComp {A : Type} (r1 r2 : ObservableV A) : Option (ObservableV A) := some (L
 /-- The null observable trace. -/
 def obsId {A : Type} : ObservableV A := []
 
+/-- Hidden system for words. -/
 def hiddenSystem (A B : Type) (c_B : B → ℚ) : HiddenSystem where
   G := HiddenG A B; comp := hComp; cost := hiddenCost A B c_B
 
+/-- Observable system for words. -/
 def observableSystem (A : Type) : ObservableSystem where
   V := ObservableV A; comp := oComp; id := obsId; complexity := fun _ => 0
 
-def system (A B : Type) (c_B : B → ℚ) : System where
+/-- Sealed rational system for words. -/
+def system (A B : Type) [Fintype B] [Nonempty B] (c_B : B → ℚ) : System where
   Hid := hiddenSystem A B c_B
   Obs := observableSystem A
   proj := @proj A B
@@ -91,6 +90,7 @@ def system (A B : Type) (c_B : B → ℚ) : System where
     injection h_hcomp with h_eq
     subst h_eq
     simp [proj, observableSystem, oComp, List.map_append]
+  delta := fun R => (R.length : ℚ) * c_max c_B
 
 /-- Typeclass requiring at least one positive-cost hidden symbol. -/
 class HasPositiveCost (B : Type) [Fintype B] (c_B : B → ℚ) : Prop where
@@ -100,9 +100,10 @@ class HasPositiveCost (B : Type) [Fintype B] (c_B : B → ℚ) : Prop where
 class HasNonnegativeCost (B : Type) (c_B : B → ℚ) : Prop where
   nonneg : ∀ b, 0 ≤ c_B b
 
-/-- Assumptions implementation for FiniteWord. -/
+/-- Assumptions implementation for FiniteWord (Rational-Only). -/
 def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
-    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] : Assumptions (system A B c_B) :=
+    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] :
+    Assumptions (system A B c_B) :=
 { obs_assoc := by
     intros R1 R2 R3 R12 R23 R123 h12 h23 h123a
     simp [system, observableSystem, oComp] at h12 h23 h123a
@@ -123,15 +124,16 @@ def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableE
         rw [show (hd :: tl).map (fun a => (a, b)) = (hd, b) :: tl.map (fun a => (a, b)) by rfl,
             show proj ((hd, b) :: tl.map (fun a => (a, b))) = hd :: proj (tl.map (fun a => (a, b))) by rfl,
             proj_map_id]
-  fiber_bounded := by
-    intros R
-    use (R.length : ℚ) * c_max c_B
-    intro q hq
-    rcases hq with ⟨ξ, hξ, rfl⟩
+  delta_le := by
+    intros R ξ hξ
+    simp [Fiber] at hξ
     have hproj : proj ξ = R := hξ
     have hlen : ξ.length = R.length := by rw [← proj_length ξ, hproj]
     have hcost := cost_bound c_B ξ
-    simpa [hlen] using hcost
+    dsimp [system]
+    rw [← hlen]
+    exact hcost
+  delta_id := by dsimp [system]; rfl
   id_fiber_zero := by
     intros ξ hξ
     simp [Fiber] at hξ
@@ -145,46 +147,41 @@ def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableE
     intros ξ₂ ξ₁ ξ h
     simp [system, hiddenSystem, hComp] at h
     cases h
-    change (system A B c_B).Hid.cost (List.append ξ₂ ξ₁) = (system A B c_B).Hid.cost ξ₂ + (system A B c_B).Hid.cost ξ₁
     simp [system, hiddenSystem, hiddenCost, List.map_append, List.sum_append]
   cost_nonneg := by
     intros ξ
     induction ξ with
     | nil => rfl
     | cons p rest ih =>
-      show (system A B c_B).Hid.cost (p :: rest) ≥ 0
-      change hiddenCost A B c_B (p :: rest) ≥ 0
-      simp [hiddenCost]
+      simp [system, hiddenSystem, hiddenCost]
       exact add_nonneg (hn.nonneg p.2) ih
+  delta_nonneg := by
+    intros R
+    dsimp [system]
+    apply mul_nonneg
+    · simp
+    · have b : B := Classical.choice (show Nonempty B from inferInstance)
+      have h_max : c_B b ≤ c_max c_B := Finset.le_max' _ _ (Finset.mem_image_of_mem c_B (Finset.mem_univ _))
+      exact (hn.nonneg b).trans h_max
+  delta_subadd := by
+    intros R1 R2 R21 hc
+    simp [system, observableSystem, oComp] at hc
+    cases hc
+    dsimp [system]
+    rw [List.length_append, Nat.cast_add, add_mul]
   structural_independence := by
     rcases hp.exists_pos with ⟨b, hb⟩
     let a : A := Classical.choice (show Nonempty A from inferInstance)
     let R : ObservableV A := [a]
-    let ξ : HiddenG A B := [(a, b)]
-    have h_cost_pos : c_B b > 0 := hb
-    have h_in_set_real : (c_B b : ℝ) ∈ CostSetReal (system A B c_B) R := by
-      exists (c_B b)
-      constructor
-      · exists ξ
-        constructor
-        · exact rfl
-        · simp [system, hiddenSystem, hiddenCost, ξ]
-      · exact rfl
-    have h_bdd : BddAbove (CostSetReal (system A B c_B) R) := by
-      use ((R.length : ℚ) * c_max c_B : ℝ)
-      intro r hr
-      rcases hr with ⟨q, hq, rfl⟩
-      rcases hq with ⟨η, hη, rfl⟩
-      have hlen : η.length = R.length := by
-        have hlen' := congrArg List.length (show proj η = R from hη)
-        simpa [proj_length η] using hlen'
-      have hcost := cost_bound c_B η
-      exact_mod_cast (by simpa [hlen] using hcost)
-    exact ⟨R, lt_of_lt_of_le (show (0 : ℝ) < c_B b by exact_mod_cast h_cost_pos) (real_le_csSup h_bdd h_in_set_real)⟩
+    use R
+    dsimp [system]
+    simp [R]
+    have h_cmax : c_max c_B ≥ c_B b := Finset.le_max' _ _ (Finset.mem_image_of_mem c_B (Finset.mem_univ _))
+    exact lt_of_lt_of_le hb h_cmax
   comp_reachable := fun {R1 R2 R3 Ra Rb} _ _ => ⟨List.append Rb Ra, rfl⟩ }
 
 /-- FiniteWord systems are segmentable. -/
-def segmentable (A B : Type) (c_B : B → ℚ) : Segmentable (system A B c_B) where
+def segmentable (A B : Type) [Fintype B] [Nonempty B] (c_B : B → ℚ) : Segmentable (system A B c_B) where
   fiber_decomp := by
     intros R₁ R₂ R₂₁ ξ hc hξ
     simp [system, observableSystem, oComp] at hc
@@ -210,7 +207,8 @@ def segmentable (A B : Type) (c_B : B → ℚ) : Segmentable (system A B c_B) wh
         simp [n]
 
 def segmentableAssumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableEq B]
-    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] : SegmentableAssumptions (system A B c_B) :=
+    [Nonempty A] [Nonempty B] (c_B : B → ℚ) [hp : HasPositiveCost B c_B] [hn : HasNonnegativeCost B c_B] :
+    SegmentableAssumptions (system A B c_B) :=
 { toAssumptions := assumptions A B c_B
   toSegmentable := segmentable A B c_B }
 

@@ -32,6 +32,11 @@ structure System where
     ∀ ξ₂ ξ₁ ξ,
       Hid.comp ξ₂ ξ₁ = some ξ →
       Obs.comp (proj ξ₂) (proj ξ₁) = some (proj ξ)
+  /--
+    Sealed Defect Envelope: The generator must provide a rational upper bound
+    on the fiber costs for each observable trace.
+  -/
+  delta : Obs.V → ℚ
 
 /--
 Inductive structure for explicitly building composite witnesses.

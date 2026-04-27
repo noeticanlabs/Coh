@@ -1,24 +1,12 @@
 import Coh.V2.Analytic
 import Mathlib.Data.Rat.Lemmas
-
-/-! Helper lemmas for ℚ → ℝ casts -/
-private lemma ratCast_add_real (a b : ℚ) :
-    ((a + b : ℚ) : ℝ) = (a : ℝ) + (b : ℝ) := by
-  norm_num
-
-private lemma ratCast_add_real_comm (a b : ℚ) :
-    ((b + a : ℚ) : ℝ) = (a : ℝ) + (b : ℝ) := by
-  norm_num [add_comm, add_left_comm, add_assoc]
-
-private lemma zero_ratCast : (0 : ℝ) = (0 : ℚ) := by
-  norm_num
+import Mathlib.Tactic.Linarith
 
 /-!
-## Coh V2 Certified Morphisms
+## Coh V2 Certified Morphisms (Rational Version)
 
 This module formalizes the concept of certified morphisms in the Coh V2 framework.
-A certified morphism binds an observable trace to a cost-defect pair that
-satisfies the fundamental Coh inequality and is dominated by the analytic envelope.
+All metrics and bounds are strictly rational to ensure computational determinism.
 -/
 
 namespace Coh.V2
@@ -36,7 +24,7 @@ structure CertifiedMor (S : System) (A : Assumptions S) {X : Type v} (V : X → 
   spend_nonneg : 0 ≤ spend
   defect_nonneg : 0 ≤ defect
   law : V y + spend ≤ V x + defect
-  defect_bound : delta S trace ≤ (defect : ℝ)
+  defect_bound : delta S trace ≤ defect
 
 attribute [simp] CertifiedMor.trace CertifiedMor.spend CertifiedMor.defect
 
@@ -64,7 +52,7 @@ def idMor {S : System} {A : Assumptions S} {X : Type v} (V : X → ℚ) (x : X) 
   defect_nonneg := le_rfl
   law := by simp only [add_zero, le_refl]
   defect_bound := by
-    simpa using (delta_id (S := S) A).le
+    simp [delta, A.delta_id]
 
 /-- Composition of certified morphisms - requires SegmentableAssumptions for subadditivity. -/
 def compose {S : System} (A : SegmentableAssumptions S) {X : Type v} (V : X → ℚ)
@@ -83,10 +71,9 @@ def compose {S : System} (A : SegmentableAssumptions S) {X : Type v} (V : X → 
     linarith [f.law, g.law]
   defect_bound := by
     calc
-      delta S R₂₁ ≤ delta S g.trace + delta S f.trace := delta_subadd A hcomp
-      _ ≤ (g.defect : ℝ) + (f.defect : ℝ) := add_le_add g.defect_bound f.defect_bound
-      _ = ((f.defect + g.defect : ℚ) : ℝ) := by
-        simpa [add_comm] using (ratCast_add_real (a := f.defect) (b := g.defect)).symm
+      delta S R₂₁ ≤ delta S g.trace + delta S f.trace := A.toAssumptions.delta_subadd hcomp
+      _ ≤ g.defect + f.defect := add_le_add g.defect_bound f.defect_bound
+      _ = f.defect + g.defect := add_comm _ _
 
 theorem assoc_certified {S : System} (A : SegmentableAssumptions S) {X : Type v} (V : X → ℚ)
     {w x y z : X}

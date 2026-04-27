@@ -1,13 +1,27 @@
 import Coh.V2.Primitive
-import Mathlib.Data.Real.Basic
-import Mathlib.Data.Real.Archimedean
-import Mathlib.Order.ConditionallyCompleteLattice.Basic
+import Mathlib.Data.Rat.Lemmas
+import Mathlib.Data.NNRat.Defs
+import Mathlib.Algebra.Order.Monoid.WithTop
 
 /-! ## Coh V2 Definitions -/
 
 namespace Coh.V2
 
-noncomputable section
+/-- Extended Non-negative Rational type (ℚ≥0 ∪ {∞}). -/
+abbrev ENNRat := WithTop NNRat
+
+namespace ENNRat
+
+instance : Zero ENNRat := ⟨WithTop.some 0⟩
+instance : One ENNRat := ⟨WithTop.some 1⟩
+instance : Bot ENNRat := ⟨0⟩
+instance : Top ENNRat := ⟨⊤⟩
+
+/-- Helper to create ENNRat from Rat. -/
+def ofRat (q : ℚ) : ENNRat :=
+  if h : 0 ≤ q then WithTop.some ⟨q, h⟩ else 0
+
+end ENNRat
 
 variable (S : System) (R : S.Obs.V)
 
@@ -19,17 +33,13 @@ def Fiber : Set S.Hid.G :=
 def CostSetQ : Set ℚ :=
   { q | ∃ ξ : S.Hid.G, ξ ∈ Fiber S R ∧ S.Hid.cost ξ = q }
 
-/-- Alias for backward compatibility with modules expecting CostSet (ℚ version). -/
+/-- Alias for backward compatibility. -/
 def CostSet : Set ℚ :=
   CostSetQ S R
 
-/-- Fiber cost set in `ℝ` (analytic layer). -/
-def CostSetReal : Set ℝ :=
-  { r | ∃ q : ℚ, q ∈ CostSetQ S R ∧ (q : ℝ) = r }
-
-/-- Observable defect envelope (delta) defined in ℝ to ensure supremum-completeness. -/
-def delta (S : System) (R : S.Obs.V) : ℝ :=
-  sSup (CostSetReal S R)
+/-- Observable defect envelope (delta) is now a sealed rational field of the system. -/
+def delta (S : System) (R : S.Obs.V) : ℚ :=
+  S.delta R
 
 /-- A system is segmentable if its hidden witness carrier allows for
     decomposition of composite traces into their respective components. -/
@@ -42,13 +52,5 @@ structure Segmentable (S : System) : Prop where
         S.Hid.comp ξ₂ ξ₁ = some ξ ∧
         ξ₂ ∈ Fiber S R₂ ∧
         ξ₁ ∈ Fiber S R₁
-
-theorem real_le_csSup {s : Set ℝ} {a : ℝ} (hb : BddAbove s) (ha : a ∈ s) : a ≤ sSup s :=
-  le_csSup hb ha
-
-theorem real_csSup_le {s : Set ℝ} {a : ℝ} (hne : s.Nonempty) (ha : ∀ x ∈ s, x ≤ a) : sSup s ≤ a :=
-  csSup_le hne ha
-
-end
 
 end Coh.V2
