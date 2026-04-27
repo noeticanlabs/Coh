@@ -109,9 +109,9 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
     dsimp [system]
     rw [← hlen]
     exact hcost
-  delta_id := by
-    simp [system, observableSystem]
-    apply zero_mul
+  delta_id := by simp [system, observableSystem, zero_mul]
+
+
 
   id_fiber_zero := fun ξ hξ => by
     have hproj : stepsObs ξ = [] := hξ

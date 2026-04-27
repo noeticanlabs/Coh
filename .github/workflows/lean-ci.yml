@@ -16,7 +16,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: Coh/.lake
-          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lake-manifest.json') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lakefile.lean', 'Coh/lake-manifest.json') }}
           restore-keys: |
             lake-${{ runner.os }}-
 
@@ -24,16 +24,28 @@ jobs:
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: Coh
-          use-mathlib-cache: true # This still helps with Mathlib specifically
+          use-mathlib-cache: true
+
+      - name: Fetch lake packages and mathlib cache
+        run: |
+          set -e
+          cd Coh
+          if lake exe cache get 2>/dev/null; then
+            echo "mathlib cache fetched"
+          else
+            echo "mathlib cache not found or failed; fetching packages"
+            lake update || lake pkg get || true
+          fi
 
       - name: Detect Mathlib
         run: |
           cd Coh
-          if grep -q "require mathlib" lakefile.lean; then
-            echo "Mathlib detected, ensuring cache is retrieved..."
-            lake exe cache get || echo "Cache get failed, continuing with full build..."
+          if grep -qi "require mathlib" lakefile.lean; then
+            echo "Mathlib detected in lakefile.lean, attempting cache get..."
+            lake exe cache get || echo "Cache get failed, running lake update..."
           else
-            echo "Mathlib not detected."
+            echo "Mathlib not explicitly required by lakefile.lean; still attempting to fetch dependencies"
+            lake update || echo "lake update failed; continuing"
           fi
 
       - name: Build project
@@ -45,7 +57,8 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: Coh/.lake
-          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lake-manifest.json') }}
+          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lakefile.lean', 'Coh/lake-manifest.json') }}
+
 
       - name: Formal tests
         run: |
