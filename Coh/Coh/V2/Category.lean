@@ -85,8 +85,11 @@ def certified2Category
       delta_nonneg := add_nonneg c1.delta_nonneg c2.delta_nonneg,
       eq_trace := c1.eq_trace.trans c2.eq_trace,
       eq_spend := c1.eq_spend.trans c2.eq_spend,
-      eq_defect := by rw [c2.eq_defect, c1.eq_defect, add_assoc]
+      eq_defect := by
+        simp [c1.eq_defect, c2.eq_defect]
+        ring
     }),
+
     two_antisymm := fun c1 c2 => by
       apply CertifiedMor.ext (A := A.toAssumptions)
       · exact c1.eq_trace
@@ -124,8 +127,9 @@ semantic envelope of its trace.
 -/
 theorem semantic_initial {S : System} {A : SegmentableAssumptions S} {X : Type v} {V : X → ℚ}
     {x y : X} (f : CertifiedMor S A.toAssumptions V x y) :
-    delta S f.trace ≤ (f.defect : ℝ) := by
+    delta S f.trace ≤ f.defect := by
   simpa using f.defect_bound
+
 
 theorem certified_2category_exists
     (S : System) (A : SegmentableAssumptions S) (X : Type v) (V : X → ℚ)

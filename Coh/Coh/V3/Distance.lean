@@ -14,6 +14,10 @@ namespace Coh.V3
 
 open Coh.V2
 
+-- Missing instances for ENNRat (WithTop NNRat)
+instance : CanonicallyOrderedAdd ENNRat := WithTop.instCanonicallyOrderedAddWithTop
+instance : AddLeftMono ENNRat := WithTop.instAddLeftMonoWithTop
+
 /--
   Directed Quasi-Metric Class (Rational Version).
   Uses ENNRat to represent distances, including infinity for unreachable states.
@@ -30,9 +34,7 @@ theorem d_of_zero {x y z : State} (h : d x y = 0) :
     d x z ≤ d y z := by
   have h_tri := d_triangle x y z
   rw [h] at h_tri
-  -- 0 + d y z = d y z
   have h_zero_add : (0 : ENNRat) + d y z = d y z := by
-    -- Using simp to handle WithTop addition
     simp [Zero.zero, Add.add]
     cases d y z <;> rfl
   rw [h_zero_add] at h_tri
@@ -77,7 +79,6 @@ theorem le_inf_add_inf {s1 s2 : Set ENNRat} {i1 i2 : ENNRat}
   intro x hx y hy
   exact add_le_add (h1.1 x hx) (h2.1 y hy)
 
-
 /--
   Induce a DirectedQuasiMetric from a V2TraceSystem.
   Note: This assumes the existence of a rational infimum for each trace set.
@@ -108,30 +109,14 @@ def v2TraceSystem_induces_directedQuasiMetric
         · exact le_refl _
     d_triangle := by
       intro x y z
-      -- Strategy: d x z is the infimum of {delta τ | τ ∈ T x z}.
-      -- Since S.comp τ₂ τ₁ ∈ T x z for any τ₁ ∈ T x y, τ₂ ∈ T y z,
-      -- we have d x z ≤ delta (comp τ₂ τ₁) ≤ delta τ₁ + delta τ₂.
-      -- This shows d x z is a lower bound for {delta τ₁ + delta τ₂}.
-      -- Taking infimum over τ₁ and τ₂ gives d x z ≤ d x y + d y z.
-      rcases S.d_is_inf x y with ⟨h_low_xy, _⟩
-      rcases S.d_is_inf y z with ⟨h_low_yz, _⟩
-      rcases S.d_is_inf x z with ⟨_, h_great_xz⟩
-      
-      apply h_great_xz
-      intro j hj
-      -- hj: ∀ τ_xz ∈ T x z, j ≤ ENNRat.ofRat (delta τ_xz)
-      -- We show that S.d_witness x y + S.d_witness y z is such a lower bound.
-      
-      -- This requires a lemma: inf A + inf B = inf (A + B)
-      -- or just inf (A + B) ≥ inf A + inf B.
-      -- Since S.d_witness is the infimum, we need to show:
-      -- ∀ τ₁ ∈ T x y, ∀ τ₂ ∈ T y z, S.d_witness x z ≤ delta τ₁ + delta τ₂
+      rcases S.d_is_inf x y with ⟨h_low_xy, h_great_xy⟩
+      rcases S.d_is_inf y z with ⟨h_low_yz, h_great_yz⟩
+      rcases S.d_is_inf x z with ⟨h_low_xz, h_great_xz⟩
       
       have h_bound : ∀ (τ₁ : Trace) (_ : τ₁ ∈ S.T x y) (τ₂ : Trace) (_ : τ₂ ∈ S.T y z),
           S.d_witness x z ≤ ENNRat.ofRat (S.delta τ₁) + ENNRat.ofRat (S.delta τ₂) := by
         intro τ₁ hτ₁ τ₂ hτ₂
-        rcases S.d_is_inf x z with ⟨h_low_xz_inner, _⟩
-        apply h_low_xz_inner
+        apply h_low_xz
         use S.comp τ₂ τ₁
         use S.comp_closed τ₁ hτ₁ τ₂ hτ₂
         simp [ENNRat.ofRat]
@@ -140,12 +125,21 @@ def v2TraceSystem_induces_directedQuasiMetric
           exact S.delta_comp τ₁ hτ₁ τ₂ hτ₂
         · have := S.delta_nonneg (S.comp τ₂ τ₁)
           linarith
-      
-      -- The rest follows from the infimum properties of ENNRat.
-      -- Since I cannot easily prove the full limit properties here without more lemmas,
-      -- I will mark the load-bearing step as proved by the logic of the infimum.
-      sorry
 
+      have h1 : ∀ (τ₁ : Trace) (hτ₁ : τ₁ ∈ S.T x y),
+          S.d_witness x z ≤ ENNRat.ofRat (S.delta τ₁) + S.d_witness y z := by
+        intro τ₁ hτ₁
+        apply h_great_yz
+        intro j' hj'
+        rcases hj' with ⟨τ₂, hτ₂, rfl⟩
+        exact h_bound τ₁ hτ₁ τ₂ hτ₂
+      
+      apply h_great_xy
+      intro j'' hj''
+      rcases hj'' with ⟨τ₁, hτ₁, rfl⟩
+      rw [add_comm]
+      exact h1 τ₁ hτ₁
   }
+
 
 end Coh.V3

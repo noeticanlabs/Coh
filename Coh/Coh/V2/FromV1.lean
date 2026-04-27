@@ -23,7 +23,10 @@ def stepsObs {X : Type} (ss : List (Step X)) : List X :=
 /-- Class for types with bounded spend per step. -/
 class BoundedSpend (X : Type) where
   c_max : ℚ
+  c_max_nonneg : 0 ≤ c_max
+  c_max_pos : 0 < c_max
   spend_le : ∀ s : Step X, s.costSpend ≤ c_max
+
 
 /-- A hidden system based on V1 operational steps. -/
 def hiddenSystem (X : Type) [DecidableEq X] : HiddenSystem where
@@ -123,17 +126,21 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
     simp [system]
     apply mul_nonneg
     · simp
-    · -- c_max must be non-negative. 
-      -- Since c_max is from a class, we assume it's part of the spec or add a field.
-      sorry 
+    · exact BoundedSpend.c_max_nonneg X
+
   delta_subadd := fun {R₁ R₂ R₂₁} hc => by
     simp [system, observableSystem] at hc
     cases hc
     simp [system]
     rw [List.length_append, Nat.cast_add, add_mul]
   structural_independence := by
-    -- Placeholder for structural independence proof in V1 bridge.
-    sorry
+    -- We use a singleton observable [x] as the witness.
+    -- Since c_max > 0, delta [x] = 1 * c_max > 0.
+    rcases (inferInstance : Nonempty X) with ⟨x⟩
+    use [x]
+    simp [system]
+    exact BoundedSpend.c_max_pos X
+
   comp_reachable := fun {R₁ R₂ R₃ Ra Rb} _ _ => ⟨List.append Rb Ra, rfl⟩
 
 end Coh.V1
