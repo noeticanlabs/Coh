@@ -126,7 +126,7 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
     simp [system]
     apply mul_nonneg
     · simp
-    · exact BoundedSpend.c_max_nonneg X
+    · exact BoundedSpend.c_max_nonneg
 
   delta_subadd := fun {R₁ R₂ R₂₁} hc => by
     simp [system, observableSystem] at hc
@@ -139,7 +139,7 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
     rcases (inferInstance : Nonempty X) with ⟨x⟩
     use [x]
     simp [system]
-    exact BoundedSpend.c_max_pos X
+    exact BoundedSpend.c_max_pos
 
   comp_reachable := fun {R₁ R₂ R₃ Ra Rb} _ _ => ⟨List.append Rb Ra, rfl⟩
 

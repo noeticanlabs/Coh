@@ -15,8 +15,9 @@ namespace Coh.V3
 open Coh.V2
 
 -- Missing instances for ENNRat (WithTop NNRat)
-instance : CanonicallyOrderedAdd ENNRat := WithTop.instCanonicallyOrderedAddWithTop
-instance : AddLeftMono ENNRat := WithTop.instAddLeftMonoWithTop
+instance : CanonicallyOrderedAdd ENNRat := infer_instance
+instance : AddLeftMono ENNRat := infer_instance
+
 
 /--
   Directed Quasi-Metric Class (Rational Version).

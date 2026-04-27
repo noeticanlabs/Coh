@@ -1,6 +1,8 @@
 import Mathlib.CategoryTheory.Category.Basic
 import Mathlib.CategoryTheory.Discrete.Basic
 import Coh.V2.Definitions
+import Coh.V3.Distance
+
 
 /-!
 ## Coh V3 Lawvere Enrichment (Rational Version)
