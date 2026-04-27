@@ -170,8 +170,8 @@ def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableE
     intros R1 R2 R21 hc
     simp [system, observableSystem, oComp] at hc
     cases hc
-    dsimp [system]
-    rw [List.length_append, Nat.cast_add, add_mul]
+    simp [system, List.length_append, Nat.cast_add, add_mul]
+
   structural_independence := by
     rcases hp.exists_pos with ⟨b, hb⟩
     let a : A := Classical.choice (show Nonempty A from inferInstance)

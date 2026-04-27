@@ -134,9 +134,8 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
   delta_subadd := fun {R₁ R₂ R₂₁} hc => by
     simp [system, observableSystem] at hc
     cases hc
-    simp [system]
-    rw [List.length_append]
-    simp [Nat.cast_add, add_mul]
+    simp [system, List.length_append, Nat.cast_add, add_mul]
+
 
   structural_independence := by
     -- We use a singleton observable [x] as the witness.

@@ -1,7 +1,11 @@
 import Mathlib.Data.Rat.Lemmas
 import Mathlib.Data.NNRat.Defs
 import Mathlib.Algebra.Order.Monoid.WithTop
+import Mathlib.Order.CanonicallyOrderedAdd
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.RCases
 import Coh.V2.Definitions
+
 
 /-!
 ## Coh V3 Directed Quasi-Metric (Rational-Only)
@@ -16,7 +20,8 @@ open Coh.V2
 
 -- Missing instances for ENNRat (WithTop NNRat)
 instance : CanonicallyOrderedAdd ENNRat := WithTop.canonicallyOrderedAdd
-instance : AddLeftMono ENNRat := addLeftMono_of_le_add
+instance : AddLeftMono ENNRat := WithTop.addLeftMono
+
 
 
 
@@ -112,9 +117,9 @@ def v2TraceSystem_induces_directedQuasiMetric
         · exact le_refl _
     d_triangle := by
       intro x y z
-      rcases S.d_is_inf x y with ⟨h_low_xy, h_great_xy⟩
-      rcases S.d_is_inf y z with ⟨h_low_yz, h_great_yz⟩
-      rcases S.d_is_inf x z with ⟨h_low_xz, h_great_xz⟩
+      rcases S.d_is_inf x y with ⟨_, h_great_xy⟩
+      rcases S.d_is_inf y z with ⟨_, h_great_yz⟩
+      rcases S.d_is_inf x z with ⟨h_low_xz, _⟩
       
       have h_bound : ∀ (τ₁ : Trace) (_ : τ₁ ∈ S.T x y) (τ₂ : Trace) (_ : τ₂ ∈ S.T y z),
           S.d_witness x z ≤ ENNRat.ofRat (S.delta τ₁) + ENNRat.ofRat (S.delta τ₂) := by
@@ -142,6 +147,7 @@ def v2TraceSystem_induces_directedQuasiMetric
       rcases hj'' with ⟨τ₁, hτ₁, rfl⟩
       rw [add_comm]
       exact h1 τ₁ hτ₁
+
   }
 
 
