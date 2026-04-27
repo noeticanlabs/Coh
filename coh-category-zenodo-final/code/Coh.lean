@@ -1,8 +1,10 @@
-
-import init
-import Coh.Coh.V1.Coh
+import Coh.V1.Coh
 import Mathlib.Data.Nat.Basic
 import Mathlib.Data.List.Basic
+
+/-!
+## Zenodo Archive Coh Implementation
+-/
 
 inductive GlyphTag
 | invoke
@@ -56,9 +58,6 @@ def emptyTrace {X : Type} (x : X) : Trace X :=
   chain := by
     intro i h
     cases Nat.not_lt_zero _ h }
-
-import init
-import Coh.Coh.V1.Coh
 
 def concat {X : Type} (t₁ t₂ : Trace X) : Trace X :=
 { steps := t₁.steps ++ t₂.steps,

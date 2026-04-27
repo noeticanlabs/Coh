@@ -11,6 +11,8 @@ This module derives the analytical properties of the observable defect envelope 
 
 namespace Coh.V2
 
+open Coh.V2
+
 private theorem costSetReal_nonempty {S : System} (A : Assumptions S) (R : S.Obs.V) :
     (CostSetReal S R).Nonempty := by
   rcases A.fiber_nonempty R with ⟨ξ, hξ⟩

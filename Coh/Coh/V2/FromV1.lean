@@ -14,7 +14,7 @@ to the V2 Categorical system.
 
 namespace Coh.V1
 
-open V2
+open Coh.V2
 
 /-- Observable projection: maps a sequence of steps to their source states. -/
 def stepsObs {X : Type} (ss : List (Step X)) : List X :=

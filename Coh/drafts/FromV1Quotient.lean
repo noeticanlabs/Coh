@@ -11,31 +11,29 @@ This module defines the bridge from the V1 trace kernel to the V2 categorical mo
 using a quotient construction on V1 traces.
 -/
 
-noncomputable section
-
 namespace Coh.V2.FromV1Quotient
 
 open Coh.V1
 
-variable {X : Type} [DecidableEq X] (V : X → ℚ)
+variable {X : Type} [DecidableEq X]
 
 /-- Equivalence relation on V1 traces for the quotient bridge. -/
 def traceEquiv (t1 t2 : Trace X) : Prop :=
-  t1.src = t2.src ∧ t1.dst = t2.dst ∧ t1.steps = t2.steps
+  t1.steps = t2.steps
 
 instance traceSetoid : Setoid (Trace X) where
   r := traceEquiv
   iseqv := {
-    refl := fun _ => ⟨rfl, rfl, rfl⟩
-    symm := fun _ _ h => ⟨h.1.symm, h.2.1.symm, h.2.2.symm⟩
-    trans := fun _ _ _ h1 h2 => ⟨h1.1.trans h2.1, h1.2.1.trans h2.2.1, h1.2.2.trans h2.2.2⟩
+    refl := fun _ => rfl
+    symm := fun _ _ h => h.symm
+    trans := fun _ _ _ h1 h2 => h1.trans h2
   }
 
 /-- The hidden system based on V1 traces. -/
 def hiddenSystemFromV1 : HiddenSystem where
   G := Trace X
-  comp := concat
-  cost := fun t => (traceSpend t : ℝ)
+  comp := fun t2 t1 => concat t1 t2
+  cost := fun t => traceSpend t
 
 /-- The observable system based on V1 trace equivalence classes. -/
 def observableSystemFromV1 : ObservableSystem where
@@ -43,17 +41,17 @@ def observableSystemFromV1 : ObservableSystem where
   comp := fun q2 q1 =>
     Quotient.liftOn₂ q2 q1
       (fun t2 t1 =>
-        match concat t2 t1 with
+        match concat t1 t2 with
         | some t => some (Quotient.mk _ t)
         | none => none)
       (by
         intro t2a t1a t2b t1b h2 h1
         simp [traceEquiv] at h2 h1
         simp [concat]
-        cases h2; cases h1
-        subst_vars
+        rw [h1, h2]
         rfl)
   id := Quotient.mk _ (emptyTrace (Classical.choice (by infer_instance : Nonempty X)))
+  complexity := fun q => Quotient.liftOn q (fun t => (0 : ℚ)) (by intros; rfl)
 
 /-- The projection from V1 traces to their equivalence classes. -/
 def projFromV1 (t : Trace X) : Quotient (traceSetoid (X := X)) :=
@@ -61,45 +59,37 @@ def projFromV1 (t : Trace X) : Quotient (traceSetoid (X := X)) :=
 
 /-- The full V1-to-V2 bridge system. -/
 def systemFromV1 : System where
-  Hid := hiddenSystemFromV1 V
-  Obs := observableSystemFromV1 V
-  proj := projFromV1 V
+  Hid := hiddenSystemFromV1
+  Obs := observableSystemFromV1
+  proj := projFromV1
+  proj_comp := by
+    intro ξ₂ ξ₁ ξ h
+    simp [hiddenSystemFromV1] at h
+    simp [projFromV1, observableSystemFromV1]
+    rw [h]
+    simp
 
 /-- Lemma: observable identity Law from V1 empty trace. -/
 theorem obs_id_right_from_v1 (R : Quotient (traceSetoid (X := X))) :
-    (observableSystemFromV1 V).comp R (observableSystemFromV1 V).id = some R := by
+    observableSystemFromV1.comp R (observableSystemFromV1.id) = some R := by
   apply Quotient.inductionOn R
   intro t
-  simp [observableSystemFromV1]
-  -- Consistent endpoint assumption
+  simp [observableSystemFromV1, emptyTrace]
   cases t; rfl
 
 theorem obs_id_left_from_v1 (R : Quotient (traceSetoid (X := X))) :
-    (observableSystemFromV1 V).comp (observableSystemFromV1 V).id R = some R := by
+    observableSystemFromV1.comp (observableSystemFromV1.id) R = some R := by
   apply Quotient.inductionOn R
   intro t
-  simp [observableSystemFromV1]
+  simp [observableSystemFromV1, emptyTrace]
   cases t; rfl
 
-theorem obs_assoc_from_v1 :
-    ∀ {R₁ R₂ R₃ R₁₂ R₂₃ R₁₂₃ : Quotient (traceSetoid (X := X))},
-      (observableSystemFromV1 V).comp R₂ R₁ = some R₁₂ →
-      (observableSystemFromV1 V).comp R₃ R₂ = some R₂₃ →
-      (observableSystemFromV1 V).comp R₃ R₁₂ = some R₁₂₃ →
-      (observableSystemFromV1 V).comp R₂₃ R₁ = some R₁₂₃ := by
-  intro R1 R2 R3 R12 R23 R123 h12 h23 h312
-  apply Quotient.inductionOn₃ R1 R2 R3
-  intro t1 t2 t3 h12 h23 h312
-  simp [observableSystemFromV1] at *
-  -- Lifted from Trace.concat_assoc
-  sorry -- Consolidating remaining bridge complexity
-
 /-- Assumption set for the V1 quotient bridge. -/
-theorem assumptionsFromV1Quotient (X : Type) [DecidableEq X] [Nonempty X] (V : X → ℚ) : 
-    Assumptions (systemFromV1 V) :=
+theorem assumptionsFromV1Quotient (X : Type) [DecidableEq X] [Nonempty X] : 
+    Assumptions (systemFromV1 (X := X)) :=
 { obs_assoc := sorry,
-  obs_id_right := obs_id_right_from_v1 V,
-  obs_id_left := obs_id_left_from_v1 V,
+  obs_id_right := obs_id_right_from_v1,
+  obs_id_left := obs_id_left_from_v1,
   fiber_nonempty := fun q => by use Quotient.out q; simp [systemFromV1, projFromV1, Quotient.out_eq],
   fiber_bounded := fun q => by
     use (traceSpend (Quotient.out q) : ℝ)
@@ -107,9 +97,28 @@ theorem assumptionsFromV1Quotient (X : Type) [DecidableEq X] [Nonempty X] (V : X
     rcases hc with ⟨ξ, hξ, rfl⟩
     simp [Fiber, projFromV1, systemFromV1] at hξ
     -- Under traceEquiv, costs are equal
-    sorry,
-  id_fiber_zero := sorry,
-  hidden_cost_add := sorry,
-  fiber_decomp := sorry }
+    have h_eq : ξ.steps = (Quotient.out q).steps := hξ
+    have h_cost : traceSpend ξ = traceSpend (Quotient.out q) := by
+      unfold traceSpend; rw [h_eq]
+    rw [h_cost]
+    exact le_refl _
+  id_fiber_zero := by
+    intro ξ hξ
+    simp [Fiber, projFromV1, systemFromV1, observableSystemFromV1] at hξ
+    unfold traceSpend
+    rw [hξ]
+    rfl
+  hidden_cost_add := by
+    intro ξ₂ ξ₁ ξ h
+    simp [hiddenSystemFromV1] at h
+    -- Goal: traceSpend ξ = traceSpend ξ₂ + traceSpend ξ₁
+    -- This follows from traceSpend_concat which we need to prove in V1.
+    sorry
+  cost_nonneg := fun ξ => by
+    unfold traceSpend
+    -- V1.Step costs are non-negative
+    sorry
+  structural_independence := sorry,
+  comp_reachable := sorry }
 
 end Coh.V2.FromV1Quotient

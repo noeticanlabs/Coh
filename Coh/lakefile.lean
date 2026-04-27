@@ -20,7 +20,13 @@ lean_lib «Coh» where
     `Coh.V2.Category,
     `Coh.V2.FiniteWord,
     `Coh.V2.BridgeLemmas,
-    `Coh.V2.FromV1
+    `Coh.V2.FromV1,
+    `Coh.V2.Geometry,
+    `Coh.V2.VerifierPredicates,
+    `Coh.V2.CostBridge,
+    `Coh.V3.Distance,
+    `Coh.V3.Lawvere,
+    `Coh.V3.FromV2
   ]
 
 lean_exe «FiniteWordTests» where
