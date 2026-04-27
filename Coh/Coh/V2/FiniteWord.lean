@@ -133,7 +133,10 @@ def assumptions (A B : Type) [Fintype A] [DecidableEq A] [Fintype B] [DecidableE
     dsimp [system]
     rw [← hlen]
     exact hcost
-  delta_id := by dsimp [system]; rfl
+  delta_id := by
+    simp [system, observableSystem, obsId]
+    apply zero_mul
+
   id_fiber_zero := by
     intros ξ hξ
     simp [Fiber] at hξ

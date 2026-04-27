@@ -15,8 +15,9 @@ namespace Coh.V3
 open Coh.V2
 
 -- Missing instances for ENNRat (WithTop NNRat)
-instance : CanonicallyOrderedAdd ENNRat := infer_instance
-instance : AddLeftMono ENNRat := infer_instance
+instance : CanonicallyOrderedAdd ENNRat := WithTop.canonicallyOrderedAdd
+instance : AddLeftMono ENNRat := addLeftMono_of_le_add
+
 
 
 /--
@@ -40,6 +41,7 @@ theorem d_of_zero {x y z : State} (h : d x y = 0) :
     cases d y z <;> rfl
   rw [h_zero_add] at h_tri
   exact h_tri
+
 
 end DirectedQuasiMetric
 

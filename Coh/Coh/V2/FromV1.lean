@@ -109,7 +109,10 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
     dsimp [system]
     rw [← hlen]
     exact hcost
-  delta_id := by simp [system]
+  delta_id := by
+    simp [system, observableSystem]
+    apply zero_mul
+
   id_fiber_zero := fun ξ hξ => by
     have hproj : stepsObs ξ = [] := hξ
     have hlen : ξ.length = 0 := by
@@ -132,7 +135,9 @@ def assumptions (X : Type) [DecidableEq X] [Nonempty X] [BoundedSpend X] [HasPos
     simp [system, observableSystem] at hc
     cases hc
     simp [system]
-    rw [List.length_append, Nat.cast_add, add_mul]
+    rw [List.length_append]
+    simp [Nat.cast_add, add_mul]
+
   structural_independence := by
     -- We use a singleton observable [x] as the witness.
     -- Since c_max > 0, delta [x] = 1 * c_max > 0.
