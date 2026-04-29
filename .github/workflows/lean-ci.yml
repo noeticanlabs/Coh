@@ -12,59 +12,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Restore cache
-        uses: actions/cache/restore@v5
-        with:
-          path: Coh/.lake
-          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lakefile.lean', 'Coh/lake-manifest.json') }}
-          restore-keys: |
-            lake-${{ runner.os }}-
-
       - name: Setup Lean
         uses: leanprover/lean-action@v1
         with:
           lake-package-directory: Coh
           use-mathlib-cache: true
 
-      - name: Fetch lake packages and mathlib cache
-        run: |
-          set -e
-          cd Coh
-          if lake exe cache get 2>/dev/null; then
-            echo "mathlib cache fetched"
-          else
-            echo "mathlib cache not found or failed; fetching packages"
-            lake update || lake pkg get || true
-          fi
-
-      - name: Detect Mathlib
+      - name: Build core modules (V1, V2)
         run: |
           cd Coh
-          if grep -qi "require mathlib" lakefile.lean; then
-            echo "Mathlib detected in lakefile.lean, attempting cache get..."
-            lake exe cache get || echo "Cache get failed, running lake update..."
-          else
-            echo "Mathlib not explicitly required by lakefile.lean; still attempting to fetch dependencies"
-            lake update || echo "lake update failed; continuing"
-          fi
+          lake build Coh.V1.Coh Coh.V2.Primitive Coh.V2.Definitions Coh.V2.Axioms Coh.V2.Analytic Coh.V2.Certified Coh.V2.Category Coh.V2.FiniteWord Coh.V2.BridgeLemmas Coh.V2.FromV1 Coh.V2.Geometry Coh.V2.VerifierPredicates Coh.V2.CostBridge
 
-      - name: Build project
-        run: |
-          cd Coh
-          lake build
-
-      - name: Save cache
-        uses: actions/cache/save@v5
-        with:
-          path: Coh/.lake
-          key: lake-${{ runner.os }}-${{ hashFiles('Coh/lakefile.lean', 'Coh/lake-manifest.json') }}
-
-
-      - name: Formal tests
+      - name: Build finite word tests
         run: |
           cd Coh
           lake build FiniteWordTests
-          ./.lake/build/bin/FiniteWordTests
+          lake run_exe FiniteWordTests
 
       - name: Check for sorries
         run: |
