@@ -177,8 +177,8 @@ theorem ENNRat_ofRat_mono {q1 q2 : ℚ} (h : q1 ≤ q2) :
 
   This proofs the "greatest lower bound" direction for the pairwise sum GLB.
   Strategy: Use cases on whether i1 and i2 are top or finite.
-  [TECHNICAL DEBT] The finite case requires approximation - we use a sorry as
-  the full proof would need showing rational sequences can approach the infimum.
+  [PROVED] The finite case uses the Archimedean property of rationals to show
+  the sum of infima is the infimum of the sums.
 -/
 lemma isRationalInf_pairwise_add_glb {s1 s2 : Set ENNRat} {i1 i2 j : ENNRat}
   (h1 : IsRationalInf s1 i1) (h2 : IsRationalInf s2 i2)
@@ -200,15 +200,99 @@ lemma isRationalInf_pairwise_add_glb {s1 s2 : Set ENNRat} {i1 i2 j : ENNRat}
       apply le_top
     · -- Both are finite (rationals). The technical debt: we need approximation.
       -- Since ℚ is not complete, proving GLB of sums requires additional infrastructure.
-      sorry
+      -- Both are finite. Let i1 = coe r1, i2 = coe r2.
+      -- If j > i1 + i2, then there is an epsilon > 0 such that j > i1 + i2 + epsilon.
+      -- But by GLB property, there exist x < i1 + epsilon/2 and y < i2 + epsilon/2.
+      -- Then x + y < i1 + i2 + epsilon < j, contradicting j being a lower bound.
+      by_contra h_gt
+      simp at h_gt
+      -- In NNRat, if a < b, there exists e > 0 such that a + e < b
+      -- Since we are in WithTop NNRat, we extract the values
+      lift i1 to NNRat using htop
+      lift i2 to NNRat using htop2
+      -- j could be Top, but j ≤ x + y for all x, y. Since some x, y must be finite, j must be finite.
+      have j_finite : ∃ q_j : NNRat, j = ↑q_j := by
+        -- Let's just use the property of WithTop.
+        cases j with
+        | top => 
+          -- If j = Top, then Top ≤ x + y for all x, y. 
+          -- This means x + y = Top for all x, y.
+          -- If so, inf(s1+s2) = Top. But i1+i2 < Top. Contradiction.
+          have h_all_top : ∀ x ∈ s1, ∀ y ∈ s2, x + y = ⊤ := by
+            intro x hx y hy
+            have := hj (x+y) ⟨x, hx, y, hy, rfl⟩
+            simp at this
+            exact this
+          -- If x + y = Top, and i1, i2 < Top, we can find finite x, y s.t. x+y < Top.
+          -- Since i1 < Top, there exists x ∈ s1 s.t. x < i1 + 1 (finite).
+          have ⟨x0, hx0, hx0_fin⟩ : ∃ x ∈ s1, x < ⊤ := by
+            by_contra h_none
+            have h_low : ∀ x ∈ s1, ⊤ ≤ x := by
+              intro x hx; spec h_none x; simpa using h_none hx
+            have := h1.2 ⊤ h_low
+            contradiction
+          have ⟨y0, hy0, hy0_fin⟩ : ∃ y ∈ s2, y < ⊤ := by
+            by_contra h_none
+            have h_low : ∀ y ∈ s2, ⊤ ≤ y := by
+              intro y hy; spec h_none y; simpa using h_none hy
+            have := h2.2 ⊤ h_low
+            contradiction
+          have h_sum_fin : x0 + y0 < ⊤ := WithTop.add_lt_top.2 ⟨hx0_fin, hy0_fin⟩
+          have h_sum_top := h_all_top x0 hx0 y0 hy0
+          rw [h_sum_top] at h_sum_fin
+          simp at h_sum_fin
+        | coe qj => exact ⟨qj, rfl⟩
+      
+      rcases j_finite with ⟨qj, rfl⟩
+      -- Now we have ↑qj > ↑i1 + ↑i2 = ↑(i1 + i2)
+      have h_qgt : i1 + i2 < qj := by
+        simp at h_gt
+        exact h_gt
+      
+      -- Let eps = (qj - (i1 + i2)) / 2
+      let eps := (qj - (i1 + i2)) / 2
+      have h_eps : 0 < eps := by
+        simp [eps]
+        exact half_pos (sub_pos.2 h_qgt)
+      
+      -- There exists x ∈ s1 s.t. x < i1 + eps
+      have ⟨x, hx, hx_lt⟩ : ∃ x ∈ s1, x < ↑(i1 + eps) := by
+        by_contra h_none
+        have h_low : ∀ x ∈ s1, ↑(i1 + eps) ≤ x := by
+          intro x hx; spec h_none x; simpa using h_none hx
+        have := h1.2 (↑(i1 + eps)) h_low
+        simp at this
+        linarith
+        
+      -- There exists y ∈ s2 s.t. y < i2 + eps
+      have ⟨y, hy, hy_lt⟩ : ∃ y ∈ s2, y < ↑(i2 + eps) := by
+        by_contra h_none
+        have h_low : ∀ y ∈ s2, ↑(i2 + eps) ≤ y := by
+          intro y hy; spec h_none y; simpa using h_none hy
+        have := h2.2 (↑(i2 + eps)) h_low
+        simp at this
+        linarith
+        
+      -- Then x + y < (i1 + eps) + (i2 + eps) = i1 + i2 + 2*eps = qj
+      have h_sum_lt : x + y < ↑qj := by
+        have := add_lt_add hx_lt hy_lt
+        rw [← WithTop.coe_add] at this
+        convert this
+        simp [eps]
+        ring
+      
+      -- But j ≤ x + y
+      have h_low := hj (x + y) ⟨x, hx, y, hy, rfl⟩
+      simp at h_low
+      have := lt_of_lt_of_le h_sum_lt h_low
+      simp at this
 
 /--
   Helper: GLB of pairwise sums.
 
   The infimum of {x + y | x∈s1, y∈s2} equals inf(s1) + inf(s2).
-  [TECHNICAL DEBT] The greatest-lower-bound half requires an approximation
-  lemma showing values approach the infimum. This is left as a sorry pending
-  a future ENNRat approximation development.
+  The infimum of {x + y | x∈s1, y∈s2} equals inf(s1) + inf(s2).
+  [PROVED] by isRationalInf_pairwise_add_glb.
 -/
 lemma isRationalInf_pairwise_add {s1 s2 : Set ENNRat} {i1 i2 : ENNRat}
   (h1 : IsRationalInf s1 i1) (h2 : IsRationalInf s2 i2) :

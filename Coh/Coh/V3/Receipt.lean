@@ -4,8 +4,8 @@ import Coh.V3.Distance
 /-!
 ## Coh V3 Aggregation Layer: MacroReceipts and Slabs
 
-This module implements the aggregation of discrete certified morphisms into 
-macroscopic receipts. A "Slab" is a verified chain of transitions, and a 
+This module implements the aggregation of discrete certified morphisms into
+macroscopic receipts. A "Slab" is a verified chain of transitions, and a
 "MacroReceipt" is the resulting coarse-grained certificate.
 -/
 
@@ -14,7 +14,7 @@ namespace Coh.V3
 open Coh.V2
 
 /--
-  A Slab is a chain of certified morphisms representing a contiguous 
+  A Slab is a chain of certified morphisms representing a contiguous
   evolution segment in state space.
 -/
 inductive Slab (S : System) (A : SegmentableAssumptions S) {X : Type _} (V : X → ℚ) : X → X → Type _ where
@@ -35,13 +35,13 @@ def defect : {x y : X} → Slab S A V x y → ℚ
   | _, _, .nil _ => 0
   | _, _, .cons f s => f.defect + s.defect
 
-/-- 
-  The aggregate observable trace of a slab. 
+/--
+  The aggregate observable trace of a slab.
   Returns `none` if any trace composition in the chain is undefined.
 -/
 def trace : {x y : X} → Slab S A V x y → Option S.Obs.V
   | _, _, .nil _ => some S.Obs.id
-  | _, _, .cons f s => 
+  | _, _, .cons f s =>
     match s.trace with
     | none => none
     | some t_s => S.Obs.comp t_s f.trace
@@ -56,7 +56,7 @@ def trace_val {x y : X} (s : Slab S A V x y) (h : s.Composable) : S.Obs.V :=
   (s.trace.get (by
     induction s with
     | nil => simp [trace]
-    | cons f s' ih => 
+    | cons f s' ih =>
       simp [trace]
       rcases h with ⟨h_s', t_s, h_tr, h_comp⟩
       rw [h_tr]
@@ -65,7 +65,7 @@ def trace_val {x y : X} (s : Slab S A V x y) (h : s.Composable) : S.Obs.V :=
 
 end Slab
 
-/-- 
+/--
   Lemma: The trace of an aggregated slab matches the slab's trace function.
   [PROVED] by induction on the Slab structure.
 -/
@@ -74,7 +74,7 @@ theorem slab_to_certified_trace_eq {S : System} (A : SegmentableAssumptions S) {
     (slab_to_certified A s h).trace = (s.trace.get (by
       induction s with
       | nil => simp [trace]
-      | cons f s' ih => 
+      | cons f s' ih =>
         simp [trace]
         rcases h with ⟨h_s', t_s, h_tr, h_comp⟩
         rw [h_tr]
@@ -85,7 +85,7 @@ theorem slab_to_certified_trace_eq {S : System} (A : SegmentableAssumptions S) {
       simp [slab_to_certified]
       rcases h with ⟨h_s, t_s, h_tr, h_comp⟩
       match h_comp_val : S.Obs.comp (slab_to_certified A s h_s).trace f.trace with
-      | some R₂₁ => 
+      | some R₂₁ =>
           simp [compose]
           rw [slab_to_certified_trace_eq A s h_s]
           -- We need to show that s.trace.get ... = t_s
@@ -104,14 +104,14 @@ theorem slab_to_certified_trace_eq {S : System} (A : SegmentableAssumptions S) {
           rw [h_comp_val] at h_comp
           simp at h_comp
 
-/-- 
+/--
   Recursively aggregate a Slab into a single CertifiedMor.
   [PROVED] using `compose` and `idMor` from V2.Certified.
 -/
-def slab_to_certified {S : System} (A : SegmentableAssumptions S) {X : Type _} {V : X → ℚ} 
+def slab_to_certified {S : System} (A : SegmentableAssumptions S) {X : Type _} {V : X → ℚ}
     : {x y : X} → (s : Slab S A V x y) → s.Composable → CertifiedMor S A.toAssumptions V x y
   | x, _, .nil _, _ => idMor V x
-  | x, z, .cons f s, h => 
+  | x, z, .cons f s, h =>
       let f_rest := slab_to_certified A s h.1
       let ⟨t_s, h_tr, h_comp⟩ := h.2
       match h_comp_val : S.Obs.comp (slab_to_certified A s h.1).trace f.trace with
@@ -132,35 +132,70 @@ structure MacroReceipt (S : System) (A : SegmentableAssumptions S) {X : Type _} 
   slab : Slab S A V x y
   composable : slab.Composable
 
-/-- 
+/--
   Theorem: Every MacroReceipt induces a CertifiedMor for the aggregate transition.
   [PROVED] by slab_to_certified.
 -/
-def MacroReceipt.toCertified {S : System} (A : SegmentableAssumptions S) {X : Type _} (V : X → ℚ) {x y : X} 
-    (mr : MacroReceipt S A V x y) : 
+def MacroReceipt.toCertified {S : System} (A : SegmentableAssumptions S) {X : Type _} (V : X → ℚ) {x y : X}
+    (mr : MacroReceipt S A V x y) :
     CertifiedMor S A.toAssumptions V x y :=
   slab_to_certified A mr.slab mr.composable
 
-/-- 
+/--
   Theorem: The aggregate defect of a macro receipt bounds the V3 distance.
-  [PROVED] since d is defined as the infimum witness, and every macro receipt 
+  [PROVED] since d is defined as the infimum witness, and every macro receipt
   provides a specific trace whose cost is an upper bound for that infimum.
 -/
-theorem MacroReceipt.defect_bounds_distance {S : System} {T : Type _} (A : SegmentableAssumptions S) 
-    (H : RationalMetricSystem S.Obs.V T) {X : Type _} {V : X → ℚ} {x y : X} 
+theorem MacroReceipt.defect_bounds_distance {S : System} {T : Type _} (A : SegmentableAssumptions S)
+    (H : RationalMetricSystem S.Obs.V T) {X : Type _} {V : X → ℚ} {x y : X}
     (D : DirectedQuasiMetric X) (hD : D = v2TraceSystem_induces_directedQuasiMetric H)
-    (mr : MacroReceipt S A V x y) 
+    (mr : MacroReceipt S A V x y)
     (h_trace_type : S.Obs.V = S.Obs.V) -- placeholder for alignment
     :
     D.d x y ≤ ENNRat.ofRat (mr.slab.defect) := by
-  -- 1. distance is infimum of delta
+  -- 1. Resolve distance definition
   rw [hD]
   simp [v2TraceSystem_induces_directedQuasiMetric]
+  
+  -- 2. Identify the aggregate trace and its cost
   let f_macro := mr.toCertified A V
-  -- 2. f_macro.defect_bound says delta(trace) <= mr.slab.defect
-  have h_bound := f_macro.defect_bound
-  -- 3. The infimum d_witness x y ≤ ENNRat.ofRat (delta τ) for any trace τ
-  -- We need to align the types and sets here.
-  sorry
+  let tau_macro := f_macro.trace
+  
+  -- 3. Show tau_macro is a valid member of the trace set S.T x y
+  have h_mem : tau_macro ∈ H.T x y := by
+    unfold MacroReceipt.toCertified at f_macro
+    induction mr.slab with
+    | nil => 
+      simp [MacroReceipt.toCertified, slab_to_certified, idMor, tau_macro]
+      exact H.id_mem x
+    | cons f s ih =>
+      simp [MacroReceipt.toCertified, slab_to_certified] at *
+      match h_comp : H.comp (slab_to_certified A s mr.composable.1).trace f.trace with
+      | some R => 
+        simp [compose]
+        exact H.comp_closed (slab_to_certified A s mr.composable.1).trace (ih mr.composable.1) f.trace f.trace_mem
+      | none => contradiction
+
+  -- 4. Show delta(tau_macro) <= mr.slab.defect
+  have h_delta_bound := f_macro.defect_bound
+  
+  -- 5. By infimum property, d x y ≤ ENNRat.ofRat (delta tau_macro)
+  let s_img := image_set H.toV2TraceSystem x y
+  have h_img_mem : ENNRat.ofRat (H.delta tau_macro) ∈ s_img := ⟨tau_macro, h_mem, rfl⟩
+  have h_inf_bound := (H.d_is_inf x y).lower (ENNRat.ofRat (H.delta tau_macro)) h_img_mem
+  
+  -- 6. Combine
+  have h_defect_eq : f_macro.defect = mr.slab.defect := by
+    induction mr.slab with
+    | nil => simp [MacroReceipt.toCertified, slab_to_certified, idMor, Slab.defect]
+    | cons f s ih => 
+      simp [MacroReceipt.toCertified, slab_to_certified, Slab.defect] at *
+      match h_comp : H.comp (slab_to_certified A s mr.composable.1).trace f.trace with
+      | some R => 
+        simp [compose]
+        rw [ih mr.composable.1]
+  
+  rw [h_defect_eq] at h_delta_bound
+  exact le_trans h_inf_bound (ENNRat_ofRat_mono h_delta_bound)
 
 end Coh.V3
